@@ -127,21 +127,21 @@ function renderInventory() {
     const statusLow = product.quantity <= product.threshold;
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>
+      <td data-label="Product">
         <div class="product-cell">
           <strong>${product.name}</strong>
           <span>Threshold: ${product.threshold}</span>
         </div>
       </td>
-      <td>${product.category}</td>
-      <td>${formatCurrency(product.price)}</td>
-      <td>${product.quantity}</td>
-      <td>
+      <td data-label="Category">${product.category}</td>
+      <td data-label="Price">${formatCurrency(product.price)}</td>
+      <td data-label="Stock">${product.quantity}</td>
+      <td data-label="Status">
         <span class="status-pill ${statusLow ? "status-pill--low" : "status-pill--healthy"}">
           ${statusLow ? "Low Stock" : "Healthy"}
         </span>
       </td>
-      <td>
+      <td data-label="Action">
         <button class="table-action" data-delete-id="${product.id}" type="button" aria-label="Delete ${product.name}">
           Delete
         </button>

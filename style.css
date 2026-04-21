@@ -74,6 +74,7 @@ body {
     radial-gradient(circle at top left, color-mix(in srgb, var(--bg-accent) 35%, transparent), transparent 30%),
     radial-gradient(circle at right center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 24%),
     linear-gradient(180deg, color-mix(in srgb, var(--bg) 82%, white 18%) 0%, var(--bg) 100%);
+  overflow-x: hidden;
 }
 
 a,
@@ -107,10 +108,33 @@ a {
   top: 1rem;
 }
 
+.theme-fab {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 20;
+  appearance: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  padding: 0.85rem 1rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.theme-fab:hover {
+  transform: translateY(-1px);
+}
+
 .page-shell {
   width: min(74rem, calc(100% - 2rem));
   margin: 0 auto;
-  padding: var(--space-6) 0 var(--space-7);
+  padding: max(4.5rem, calc(var(--space-6) + env(safe-area-inset-top))) 0
+    calc(var(--space-7) + env(safe-area-inset-bottom));
 }
 
 .hero,
@@ -217,6 +241,14 @@ a {
   min-height: 2.75rem;
   border: 1px solid transparent;
   transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.button,
+.theme-fab,
+.table-action,
+input,
+select {
+  touch-action: manipulation;
 }
 
 .button:hover,
@@ -460,9 +492,17 @@ th {
     --base-size: 16px;
   }
 
+  .theme-fab {
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    padding: 0.75rem 0.9rem;
+    min-height: 2.5rem;
+    font-size: 0.95rem;
+  }
+
   .page-shell {
-    width: min(100% - 1rem, 100%);
-    padding-top: 1rem;
+    width: min(100% - 0.75rem, 100%);
+    padding-top: max(4rem, calc(3rem + env(safe-area-inset-top)));
   }
 
   .hero__content,
@@ -471,6 +511,22 @@ th {
   .stat-card {
     padding: var(--space-4);
     border-radius: 1.3rem;
+  }
+
+  .hero__actions,
+  .form-actions {
+    width: 100%;
+  }
+
+  .hero__actions .button,
+  .form-actions .button,
+  .table-action {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .search-box {
+    min-width: 100%;
   }
 
   .form-grid {
@@ -483,8 +539,64 @@ th {
     align-items: start;
   }
 
-  th:nth-child(2),
-  td:nth-child(2) {
+  .table-wrap {
+    overflow: visible;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
     display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  tr {
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
+  }
+
+  td {
+    border-bottom: 0;
+    padding: 0.45rem 0;
+  }
+
+  td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  td[data-label="Product"]::before {
+    margin-bottom: 0.35rem;
+  }
+
+  td[data-label="Action"] {
+    padding-top: 0.7rem;
+  }
+
+  td[colspan]::before {
+    content: none;
+  }
+
+  .status-pill {
+    min-height: 2.1rem;
   }
 }
