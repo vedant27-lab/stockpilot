@@ -1,0 +1,17 @@
+{
+  "name": "stockpilot",
+  "version": "1.0.0",
+  "description": "Accessible inventory and sales dashboard with a minimal Node.js backend.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "inventory",
+    "sales",
+    "node",
+    "wtl",
+    "mini-project"
+  ],
+  "license": "MIT"
+}

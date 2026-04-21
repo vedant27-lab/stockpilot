@@ -1,0 +1,39 @@
+{
+  "products": [
+    {
+      "id": "seed-notebook",
+      "name": "Premium Notebook",
+      "category": "Stationery",
+      "price": 299,
+      "quantity": 34,
+      "threshold": 10
+    },
+    {
+      "id": "seed-mouse",
+      "name": "Wireless Mouse",
+      "category": "Electronics",
+      "price": 799,
+      "quantity": 7,
+      "threshold": 8
+    },
+    {
+      "id": "seed-mug",
+      "name": "Ceramic Coffee Mug",
+      "category": "Home Goods",
+      "price": 249,
+      "quantity": 18,
+      "threshold": 6
+    }
+  ],
+  "sales": [
+    {
+      "id": "seed-sale-1",
+      "productId": "seed-notebook",
+      "productName": "Premium Notebook",
+      "quantity": 2,
+      "customer": "Campus customer",
+      "amount": 598,
+      "createdAt": "2026-04-21T12:00:00.000Z"
+    }
+  ]
+}

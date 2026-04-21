@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockPilot | Accessible Inventory Dashboard</title>
+  <meta
+    name="description"
+    content="StockPilot is a simple full-stack inventory and sales manager with accessible design and light/dark mode."
+  >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="page-shell">
+    <header class="hero" aria-label="Project introduction">
+      <div class="hero__content">
+        <p class="eyebrow">WTL Mini Project</p>
+        <h1>StockPilot</h1>
+        <p class="hero__text">
+          A minimal inventory and sales manager for small businesses. Add products, record sales,
+          track low stock, and manage business data from a clean, responsive dashboard.
+        </p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="#inventory-section">Open Dashboard</a>
+          <button
+            class="button button--ghost"
+            id="theme-toggle"
+            type="button"
+            aria-pressed="false"
+            aria-label="Switch between light mode and dark mode"
+          >
+            Dark Mode
+          </button>
+          <button class="button button--ghost" id="reset-demo" type="button">Reset Demo Data</button>
+        </div>
+      </div>
+
+      <aside class="hero__panel" aria-label="Project highlights">
+        <div class="hero-card">
+          <span>Business Use Case</span>
+          <strong>Retail inventory and sales</strong>
+        </div>
+        <div class="hero-card">
+          <span>Frontend</span>
+          <strong>HTML, CSS, JavaScript</strong>
+        </div>
+        <div class="hero-card">
+          <span>Backend</span>
+          <strong>Node.js HTTP API</strong>
+        </div>
+      </aside>
+    </header>
+
+    <main id="main-content">
+      <section class="status-banner" aria-live="polite" id="status-banner">
+        Loading dashboard data...
+      </section>
+
+      <section class="stats-grid" aria-label="Business summary">
+        <article class="stat-card">
+          <span>Total Products</span>
+          <strong id="total-products">0</strong>
+          <small>Unique items in inventory</small>
+        </article>
+        <article class="stat-card">
+          <span>Total Units</span>
+          <strong id="total-units">0</strong>
+          <small>Current stock count</small>
+        </article>
+        <article class="stat-card">
+          <span>Today's Revenue</span>
+          <strong id="today-revenue">Rs 0</strong>
+          <small>Sales recorded today</small>
+        </article>
+        <article class="stat-card stat-card--warning">
+          <span>Low Stock Alerts</span>
+          <strong id="low-stock-count">0</strong>
+          <small>Products requiring restock</small>
+        </article>
+      </section>
+
+      <section class="grid-layout" id="inventory-section">
+        <article class="panel" aria-labelledby="add-product-title">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Inventory</p>
+              <h2 id="add-product-title">Add Product</h2>
+            </div>
+          </div>
+          <form id="product-form" class="form-grid">
+            <label for="product-name">Product Name</label>
+            <input type="text" id="product-name" placeholder="Premium Notebook" required>
+
+            <label for="product-category">Category</label>
+            <input type="text" id="product-category" placeholder="Stationery" required>
+
+            <label for="product-price">Price (Rs)</label>
+            <input type="number" id="product-price" min="1" step="1" placeholder="299" required>
+
+            <label for="product-quantity">Quantity</label>
+            <input type="number" id="product-quantity" min="0" step="1" placeholder="40" required>
+
+            <label for="product-threshold">Low Stock Limit</label>
+            <input type="number" id="product-threshold" min="1" step="1" placeholder="8" required>
+
+            <div class="form-actions form-grid__full">
+              <button class="button button--primary" type="submit">Save Product</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel" aria-labelledby="record-sale-title">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Sales</p>
+              <h2 id="record-sale-title">Record Sale</h2>
+            </div>
+          </div>
+          <form id="sale-form" class="form-grid">
+            <label class="form-grid__full" for="sale-product">Select Product</label>
+            <select id="sale-product" class="form-grid__full" required></select>
+
+            <label for="sale-quantity">Quantity Sold</label>
+            <input type="number" id="sale-quantity" min="1" step="1" placeholder="2" required>
+
+            <label for="sale-customer">Sold To</label>
+            <input type="text" id="sale-customer" placeholder="Walk-in customer" required>
+
+            <div class="form-actions form-grid__full">
+              <button class="button button--primary" type="submit">Record Sale</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section class="grid-layout grid-layout--bottom">
+        <article class="panel panel--wide" aria-labelledby="inventory-list-title">
+          <div class="panel__header panel__header--split">
+            <div>
+              <p class="panel__label">Overview</p>
+              <h2 id="inventory-list-title">Inventory List</h2>
+            </div>
+            <div class="search-box">
+              <label for="search-input">Search products</label>
+              <input type="search" id="search-input" placeholder="Search product or category">
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">Current inventory list</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Product</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Stock</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-table"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel" aria-labelledby="restock-title">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Alerts</p>
+              <h2 id="restock-title">Restock Needed</h2>
+            </div>
+          </div>
+          <div id="alert-list" class="stack-list"></div>
+        </article>
+      </section>
+
+      <section class="panel panel--history" aria-labelledby="recent-sales-title">
+        <div class="panel__header">
+          <div>
+            <p class="panel__label">Timeline</p>
+            <h2 id="recent-sales-title">Recent Sales</h2>
+          </div>
+        </div>
+        <div id="sales-history" class="sales-history"></div>
+      </section>
+    </main>
+  </div>
+
+  <template id="empty-state-template">
+    <div class="empty-state">
+      <strong>No data available</strong>
+      <p>Start by adding a product to populate the dashboard.</p>
+    </div>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
