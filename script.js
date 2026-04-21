@@ -2,32 +2,43 @@ const THEME_KEY = "stockpilot-theme";
 
 const els = {
   productForm: document.getElementById("product-form"),
-  saleForm: document.getElementById("sale-form"),
+  movementForm: document.getElementById("movement-form"),
+  shareForm: document.getElementById("share-form"),
   searchInput: document.getElementById("search-input"),
   themeToggle: document.getElementById("theme-toggle"),
   resetDemo: document.getElementById("reset-demo"),
   statusBanner: document.getElementById("status-banner"),
   productName: document.getElementById("product-name"),
+  productSku: document.getElementById("product-sku"),
   productCategory: document.getElementById("product-category"),
+  productSupplier: document.getElementById("product-supplier"),
   productPrice: document.getElementById("product-price"),
   productQuantity: document.getElementById("product-quantity"),
   productThreshold: document.getElementById("product-threshold"),
-  saleProduct: document.getElementById("sale-product"),
-  saleQuantity: document.getElementById("sale-quantity"),
-  saleCustomer: document.getElementById("sale-customer"),
+  movementProduct: document.getElementById("movement-product"),
+  movementType: document.getElementById("movement-type"),
+  movementQuantity: document.getElementById("movement-quantity"),
+  movementNote: document.getElementById("movement-note"),
+  shareName: document.getElementById("share-name"),
+  shareEmail: document.getElementById("share-email"),
+  shareRole: document.getElementById("share-role"),
   inventoryTable: document.getElementById("inventory-table"),
   alertList: document.getElementById("alert-list"),
-  salesHistory: document.getElementById("sales-history"),
+  movementHistory: document.getElementById("movement-history"),
+  shareList: document.getElementById("share-list"),
+  movementSummary: document.getElementById("movement-summary"),
+  categoryChart: document.getElementById("category-chart"),
   totalProducts: document.getElementById("total-products"),
   totalUnits: document.getElementById("total-units"),
-  todayRevenue: document.getElementById("today-revenue"),
+  inventoryValue: document.getElementById("inventory-value"),
   lowStockCount: document.getElementById("low-stock-count"),
   emptyStateTemplate: document.getElementById("empty-state-template"),
 };
 
 const state = {
   products: [],
-  sales: [],
+  movements: [],
+  shares: [],
 };
 
 function setStatus(message, tone = "") {
@@ -53,16 +64,6 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
-function isToday(dateString) {
-  const target = new Date(dateString);
-  const now = new Date();
-  return (
-    target.getDate() === now.getDate() &&
-    target.getMonth() === now.getMonth() &&
-    target.getFullYear() === now.getFullYear()
-  );
-}
-
 function getFilteredProducts() {
   const term = els.searchInput.value.trim().toLowerCase();
   if (!term) {
@@ -70,37 +71,58 @@ function getFilteredProducts() {
   }
 
   return state.products.filter((product) => {
-    return (
-      product.name.toLowerCase().includes(term) ||
-      product.category.toLowerCase().includes(term)
-    );
+    return [product.name, product.sku, product.category, product.supplier]
+      .join(" ")
+      .toLowerCase()
+      .includes(term);
   });
 }
 
-function renderStats() {
+function getAnalytics() {
   const totalUnits = state.products.reduce((sum, product) => sum + product.quantity, 0);
-  const todayRevenue = state.sales
-    .filter((sale) => isToday(sale.createdAt))
-    .reduce((sum, sale) => sum + sale.amount, 0);
+  const inventoryValue = state.products.reduce((sum, product) => sum + product.quantity * product.price, 0);
   const lowStock = state.products.filter((product) => product.quantity <= product.threshold);
+  const incomingUnits = state.movements
+    .filter((entry) => entry.type === "in")
+    .reduce((sum, entry) => sum + entry.quantity, 0);
+  const outgoingUnits = state.movements
+    .filter((entry) => entry.type === "out")
+    .reduce((sum, entry) => sum + entry.quantity, 0);
 
-  els.totalProducts.textContent = String(state.products.length);
-  els.totalUnits.textContent = String(totalUnits);
-  els.todayRevenue.textContent = formatCurrency(todayRevenue);
-  els.lowStockCount.textContent = String(lowStock.length);
+  const categoryMap = new Map();
+  state.products.forEach((product) => {
+    categoryMap.set(product.category, (categoryMap.get(product.category) || 0) + product.quantity);
+  });
+
+  return {
+    totalUnits,
+    inventoryValue,
+    lowStock,
+    incomingUnits,
+    outgoingUnits,
+    categoryBreakdown: [...categoryMap.entries()],
+  };
 }
 
-function renderProductOptions() {
+function renderStats() {
+  const analytics = getAnalytics();
+  els.totalProducts.textContent = String(state.products.length);
+  els.totalUnits.textContent = String(analytics.totalUnits);
+  els.inventoryValue.textContent = formatCurrency(analytics.inventoryValue);
+  els.lowStockCount.textContent = String(analytics.lowStock.length);
+}
+
+function renderMovementOptions() {
   if (!state.products.length) {
-    els.saleProduct.innerHTML = '<option value="">No products available</option>';
-    els.saleProduct.disabled = true;
+    els.movementProduct.innerHTML = '<option value="">No inventory items available</option>';
+    els.movementProduct.disabled = true;
     return;
   }
 
-  els.saleProduct.disabled = false;
-  els.saleProduct.innerHTML = state.products
+  els.movementProduct.disabled = false;
+  els.movementProduct.innerHTML = state.products
     .map((product) => {
-      return `<option value="${product.id}">${product.name} (${product.quantity} in stock)</option>`;
+      return `<option value="${product.id}">${product.name} | ${product.sku} | ${product.quantity} units</option>`;
     })
     .join("");
 }
@@ -112,10 +134,10 @@ function renderInventory() {
   if (!products.length) {
     els.inventoryTable.innerHTML = `
       <tr>
-        <td colspan="6">
+        <td colspan="7">
           <div class="empty-state">
-            <strong>No matching products</strong>
-            <p>Try a different search term or add a new product.</p>
+            <strong>No matching inventory items</strong>
+            <p>Try another search or add a new inventory record.</p>
           </div>
         </td>
       </tr>
@@ -124,21 +146,22 @@ function renderInventory() {
   }
 
   products.forEach((product) => {
-    const statusLow = product.quantity <= product.threshold;
+    const low = product.quantity <= product.threshold;
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td data-label="Product">
+      <td data-label="Item">
         <div class="product-cell">
           <strong>${product.name}</strong>
-          <span>Threshold: ${product.threshold}</span>
+          <span>${product.category}</span>
         </div>
       </td>
-      <td data-label="Category">${product.category}</td>
-      <td data-label="Price">${formatCurrency(product.price)}</td>
-      <td data-label="Stock">${product.quantity}</td>
+      <td data-label="SKU">${product.sku}</td>
+      <td data-label="Supplier">${product.supplier}</td>
+      <td data-label="Units">${product.quantity}</td>
+      <td data-label="Value">${formatCurrency(product.quantity * product.price)}</td>
       <td data-label="Status">
-        <span class="status-pill ${statusLow ? "status-pill--low" : "status-pill--healthy"}">
-          ${statusLow ? "Low Stock" : "Healthy"}
+        <span class="status-pill ${low ? "status-pill--low" : "status-pill--healthy"}">
+          ${low ? "Reorder" : "Healthy"}
         </span>
       </td>
       <td data-label="Action">
@@ -165,43 +188,135 @@ function renderAlerts() {
     card.className = "alert-card";
     card.innerHTML = `
       <strong>${product.name}</strong>
-      <p>${product.quantity} units left in ${product.category}</p>
+      <p>${product.quantity} units left | reorder at ${product.threshold} | supplier: ${product.supplier}</p>
     `;
     els.alertList.appendChild(card);
   });
 }
 
-function renderSalesHistory() {
-  els.salesHistory.innerHTML = "";
+function renderMovementHistory() {
+  els.movementHistory.innerHTML = "";
 
-  if (!state.sales.length) {
-    els.salesHistory.appendChild(els.emptyStateTemplate.content.cloneNode(true));
+  if (!state.movements.length) {
+    els.movementHistory.appendChild(els.emptyStateTemplate.content.cloneNode(true));
     return;
   }
 
-  [...state.sales]
+  [...state.movements]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 8)
-    .forEach((sale) => {
+    .forEach((entry) => {
       const item = document.createElement("article");
       item.className = "sales-item";
+      const amount = entry.amount ? formatCurrency(entry.amount) : "No value";
       item.innerHTML = `
         <div>
-          <strong>${sale.productName}</strong>
-          <div class="sales-item__meta">${sale.customer} | ${sale.quantity} unit(s) | ${formatDateTime(sale.createdAt)}</div>
+          <strong>${entry.productName}</strong>
+          <div class="sales-item__meta">${entry.type === "in" ? "Stock In" : "Stock Out"} | ${entry.quantity} units | ${entry.note}</div>
+          <div class="sales-item__meta">${formatDateTime(entry.createdAt)}</div>
         </div>
-        <div class="sales-item__amount">${formatCurrency(sale.amount)}</div>
+        <div class="sales-item__amount">${amount}</div>
       `;
-      els.salesHistory.appendChild(item);
+      els.movementHistory.appendChild(item);
     });
+}
+
+function renderShares() {
+  els.shareList.innerHTML = "";
+
+  if (!state.shares.length) {
+    els.shareList.appendChild(els.emptyStateTemplate.content.cloneNode(true));
+    return;
+  }
+
+  state.shares.forEach((share) => {
+    const card = document.createElement("article");
+    card.className = "share-card";
+    card.innerHTML = `
+      <div>
+        <strong>${share.name}</strong>
+        <div class="sales-item__meta">${share.email}</div>
+        <div class="sales-item__meta">${share.role} | ${share.status} | Invite ${share.token}</div>
+      </div>
+      <button class="table-action" data-share-delete-id="${share.id}" type="button" aria-label="Revoke access for ${share.name}">
+        Revoke
+      </button>
+    `;
+    els.shareList.appendChild(card);
+  });
+}
+
+function renderMovementSummary() {
+  const analytics = getAnalytics();
+  els.movementSummary.innerHTML = `
+    <article class="metric-card">
+      <span>Incoming Units</span>
+      <strong>${analytics.incomingUnits}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Outgoing Units</span>
+      <strong>${analytics.outgoingUnits}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Shared Access</span>
+      <strong>${state.shares.length}</strong>
+    </article>
+  `;
+}
+
+function renderCategoryChart() {
+  const entries = getAnalytics().categoryBreakdown;
+  els.categoryChart.innerHTML = "";
+
+  if (!entries.length) {
+    els.categoryChart.innerHTML = `
+      <text x="50%" y="50%" text-anchor="middle" fill="currentColor" opacity="0.55">
+        No category data available
+      </text>
+    `;
+    return;
+  }
+
+  const maxValue = Math.max(...entries.map(([, value]) => value), 1);
+  const colors = ["#d66a3c", "#3e8e7e", "#4c6edb", "#d9a441", "#9b5de5", "#2f9e44"];
+  const width = 600;
+  const chartHeight = 170;
+  const baseY = 210;
+  const barWidth = Math.max(52, Math.floor(420 / entries.length));
+  const gap = 24;
+  const startX = 56;
+
+  const axis = `
+    <line x1="40" y1="${baseY}" x2="${width - 20}" y2="${baseY}" stroke="currentColor" opacity="0.2" />
+    <line x1="40" y1="24" x2="40" y2="${baseY}" stroke="currentColor" opacity="0.2" />
+  `;
+
+  const bars = entries
+    .map(([label, value], index) => {
+      const x = startX + index * (barWidth + gap);
+      const height = Math.max(18, Math.round((value / maxValue) * chartHeight));
+      const y = baseY - height;
+      const color = colors[index % colors.length];
+      return `
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${height}" rx="18" fill="${color}" opacity="0.88"></rect>
+        <text x="${x + barWidth / 2}" y="${y - 8}" text-anchor="middle" font-size="14" fill="currentColor">${value}</text>
+        <text x="${x + barWidth / 2}" y="${baseY + 18}" text-anchor="middle" font-size="13" fill="currentColor">${label}</text>
+      `;
+    })
+    .join("");
+
+  els.categoryChart.innerHTML = axis + bars;
 }
 
 function renderAll() {
   renderStats();
-  renderProductOptions();
+  renderMovementOptions();
   renderInventory();
   renderAlerts();
-  renderSalesHistory();
+  renderMovementHistory();
+  renderShares();
+  renderMovementSummary();
+  renderCategoryChart();
 }
 
 async function apiRequest(path, options = {}) {
@@ -225,14 +340,15 @@ async function apiRequest(path, options = {}) {
 
 async function loadDashboard() {
   try {
-    setStatus("Loading dashboard data...");
+    setStatus("Loading inventory workspace...");
     const payload = await apiRequest("/api/dashboard");
     state.products = payload.products || [];
-    state.sales = payload.sales || [];
+    state.movements = payload.movements || [];
+    state.shares = payload.shares || [];
     renderAll();
-    setStatus("Dashboard data loaded successfully.", "success");
+    setStatus("Inventory workspace loaded successfully.", "success");
   } catch (error) {
-    setStatus(error.message || "Could not load dashboard data.", "error");
+    setStatus(error.message || "Could not load workspace data.", "error");
   }
 }
 
@@ -241,7 +357,9 @@ async function addProduct(event) {
 
   const product = {
     name: els.productName.value.trim(),
+    sku: els.productSku.value.trim(),
     category: els.productCategory.value.trim(),
+    supplier: els.productSupplier.value.trim(),
     price: Number(els.productPrice.value),
     quantity: Number(els.productQuantity.value),
     threshold: Number(els.productThreshold.value),
@@ -254,31 +372,56 @@ async function addProduct(event) {
     });
     els.productForm.reset();
     await loadDashboard();
-    setStatus(`Product "${product.name}" added successfully.`, "success");
+    setStatus(`Inventory item "${product.name}" added successfully.`, "success");
   } catch (error) {
-    setStatus(error.message || "Could not add product.", "error");
+    setStatus(error.message || "Could not add inventory item.", "error");
   }
 }
 
-async function recordSale(event) {
+async function recordMovement(event) {
   event.preventDefault();
 
-  const sale = {
-    productId: els.saleProduct.value,
-    quantity: Number(els.saleQuantity.value),
-    customer: els.saleCustomer.value.trim(),
+  const movement = {
+    productId: els.movementProduct.value,
+    type: els.movementType.value,
+    quantity: Number(els.movementQuantity.value),
+    note: els.movementNote.value.trim(),
   };
 
   try {
-    await apiRequest("/api/sales", {
+    await apiRequest("/api/movements", {
       method: "POST",
-      body: JSON.stringify(sale),
+      body: JSON.stringify(movement),
     });
-    els.saleForm.reset();
+    els.movementForm.reset();
+    els.movementType.value = "in";
     await loadDashboard();
-    setStatus("Sale recorded successfully.", "success");
+    setStatus("Inventory movement saved successfully.", "success");
   } catch (error) {
-    setStatus(error.message || "Could not record sale.", "error");
+    setStatus(error.message || "Could not save inventory movement.", "error");
+  }
+}
+
+async function createShareAccess(event) {
+  event.preventDefault();
+
+  const invite = {
+    name: els.shareName.value.trim(),
+    email: els.shareEmail.value.trim(),
+    role: els.shareRole.value,
+  };
+
+  try {
+    await apiRequest("/api/shares", {
+      method: "POST",
+      body: JSON.stringify(invite),
+    });
+    els.shareForm.reset();
+    els.shareRole.value = "Viewer";
+    await loadDashboard();
+    setStatus(`Shared access created for ${invite.email}.`, "success");
+  } catch (error) {
+    setStatus(error.message || "Could not create shared access.", "error");
   }
 }
 
@@ -296,14 +439,34 @@ async function deleteProduct(productId) {
   try {
     await apiRequest(`/api/products/${productId}`, { method: "DELETE" });
     await loadDashboard();
-    setStatus(`Product "${product.name}" deleted.`, "success");
+    setStatus(`Inventory item "${product.name}" deleted.`, "success");
   } catch (error) {
-    setStatus(error.message || "Could not delete product.", "error");
+    setStatus(error.message || "Could not delete inventory item.", "error");
+  }
+}
+
+async function revokeShare(shareId) {
+  const share = state.shares.find((item) => item.id === shareId);
+  if (!share) {
+    return;
+  }
+
+  const confirmed = window.confirm(`Revoke shared access for "${share.name}"?`);
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await apiRequest(`/api/shares/${shareId}`, { method: "DELETE" });
+    await loadDashboard();
+    setStatus(`Shared access revoked for ${share.email}.`, "success");
+  } catch (error) {
+    setStatus(error.message || "Could not revoke shared access.", "error");
   }
 }
 
 async function resetDemoData() {
-  const confirmed = window.confirm("Reset the app to its original demo data?");
+  const confirmed = window.confirm("Reset the app to its original inventory demo data?");
   if (!confirmed) {
     return;
   }
@@ -311,7 +474,8 @@ async function resetDemoData() {
   try {
     await apiRequest("/api/reset", { method: "POST" });
     els.productForm.reset();
-    els.saleForm.reset();
+    els.movementForm.reset();
+    els.shareForm.reset();
     els.searchInput.value = "";
     await loadDashboard();
     setStatus("Demo data restored.", "success");
@@ -338,12 +502,12 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-  const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-  applyTheme(nextTheme);
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 }
 
 els.productForm.addEventListener("submit", addProduct);
-els.saleForm.addEventListener("submit", recordSale);
+els.movementForm.addEventListener("submit", recordMovement);
+els.shareForm.addEventListener("submit", createShareAccess);
 els.searchInput.addEventListener("input", renderInventory);
 els.themeToggle.addEventListener("click", toggleTheme);
 els.resetDemo.addEventListener("click", resetDemoData);
@@ -357,6 +521,18 @@ els.inventoryTable.addEventListener("click", (event) => {
   const productId = target.dataset.deleteId;
   if (productId) {
     deleteProduct(productId);
+  }
+});
+
+els.shareList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const shareId = target.dataset.shareDeleteId;
+  if (shareId) {
+    revokeShare(shareId);
   }
 });
 
