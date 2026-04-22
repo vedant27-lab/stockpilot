@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockPilot | Admin Dashboard</title>
+  <meta name="description" content="Admin dashboard for StockPilot inventory management. Manage products, approve customer requests, and monitor analytics.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-bg"></div>
+
+  <nav class="topbar" aria-label="Admin navigation">
+    <div class="topbar__brand">
+      <span class="topbar__logo">StockPilot</span>
+      <span class="topbar__role topbar__role--admin">Admin</span>
+    </div>
+    <div class="topbar__nav" id="tab-nav">
+      <button class="tab-nav-btn" data-tab="overview">Overview</button>
+      <button class="tab-nav-btn" data-tab="requests">
+        Requests <span class="badge" id="pending-badge" style="display:none">0</span>
+      </button>
+      <button class="tab-nav-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-nav-btn" data-tab="movements">Movements</button>
+      <button class="tab-nav-btn" data-tab="users">Users</button>
+      <button class="tab-nav-btn" data-tab="shares">Shares</button>
+    </div>
+    <div class="topbar__actions">
+      <span class="topbar__user" id="user-name"></span>
+      <button class="theme-toggle" id="theme-toggle" type="button">Theme</button>
+      <button class="btn btn--ghost btn--sm" id="logout-btn" type="button">Logout</button>
+    </div>
+  </nav>
+
+  <div class="page-shell">
+    <div class="status-banner status-banner--hidden" id="status-banner"></div>
+
+    <!-- ─── Overview Tab ─────────────────────────────── -->
+    <div class="tab-content" id="tab-overview">
+      <section class="stats-grid" id="stats-grid"></section>
+
+      <div class="layout-grid layout-grid--wide">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Analytics</p>
+              <h2 class="panel__title">Category Stock Analysis</h2>
+            </div>
+          </div>
+          <div class="chart-surface">
+            <svg id="category-chart" class="chart" viewBox="0 0 600 260" role="img" aria-label="Bar chart showing stock by category"></svg>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Movement Trends</p>
+              <h2 class="panel__title">Stock Flow</h2>
+            </div>
+          </div>
+          <div class="metric-stack" id="movement-summary"></div>
+        </div>
+      </div>
+
+      <div class="layout-grid layout-grid--wide">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Timeline</p>
+              <h2 class="panel__title">Recent Activity</h2>
+            </div>
+          </div>
+          <div class="stack-list" id="activity-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Restock Queue</p>
+              <h2 class="panel__title">Priority Alerts</h2>
+            </div>
+          </div>
+          <div class="stack-list" id="alert-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Requests Tab ─────────────────────────────── -->
+    <div class="tab-content" id="tab-requests">
+      <div class="section-title">
+        <h2>Pending Change Requests</h2>
+        <span class="label">Review Required</span>
+      </div>
+      <div class="stack-list" id="request-list"></div>
+
+      <div style="margin-top:2rem">
+        <div class="section-title">
+          <h2>Request History</h2>
+        </div>
+        <div class="stack-list" id="request-history"></div>
+      </div>
+    </div>
+
+    <!-- ─── Inventory Tab ────────────────────────────── -->
+    <div class="tab-content" id="tab-inventory">
+      <div class="layout-grid layout-grid--wide">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Inventory Register</p>
+              <h2 class="panel__title">Items in Stock</h2>
+            </div>
+            <div class="search-box">
+              <label for="search-input">Search inventory</label>
+              <input type="search" id="search-input" placeholder="Search name, SKU, category…">
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th><th>SKU</th><th>Supplier</th><th>Units</th><th>Value</th><th>Location</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Admin</p>
+              <h2 class="panel__title">Add Product</h2>
+            </div>
+          </div>
+          <form id="product-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="p-name">Item Name</label>
+                <input type="text" id="p-name" placeholder="Premium Notebook" required>
+              </div>
+              <div class="form-group">
+                <label for="p-sku">SKU</label>
+                <input type="text" id="p-sku" placeholder="STK-101" required>
+              </div>
+              <div class="form-group">
+                <label for="p-category">Category</label>
+                <input type="text" id="p-category" placeholder="Stationery" required>
+              </div>
+              <div class="form-group">
+                <label for="p-supplier">Supplier</label>
+                <input type="text" id="p-supplier" placeholder="Campus Paper Co." required>
+              </div>
+              <div class="form-group">
+                <label for="p-price">Unit Price (₹)</label>
+                <input type="number" id="p-price" min="1" step="1" placeholder="299" required>
+              </div>
+              <div class="form-group">
+                <label for="p-quantity">Quantity</label>
+                <input type="number" id="p-quantity" min="0" step="1" placeholder="40" required>
+              </div>
+              <div class="form-group">
+                <label for="p-location">Location</label>
+                <input type="text" id="p-location" placeholder="Aisle 1, Shelf B" required>
+              </div>
+              <div class="form-group">
+                <label for="p-barcode">Barcode</label>
+                <input type="text" id="p-barcode" placeholder="8901234567890">
+              </div>
+              <div class="form-grid--full">
+                <button class="btn btn--primary btn--block" type="submit">Save Product</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Movements Tab ────────────────────────────── -->
+    <div class="tab-content" id="tab-movements">
+      <div class="layout-grid layout-grid--2">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Stock Flow</p>
+              <h2 class="panel__title">Record Movement</h2>
+            </div>
+          </div>
+          <form id="movement-form">
+            <div class="form-grid">
+              <div class="form-group form-grid--full">
+                <label for="m-product">Select Item</label>
+                <select id="m-product" required></select>
+              </div>
+              <div class="form-group">
+                <label for="m-type">Movement Type</label>
+                <select id="m-type" required>
+                  <option value="in">Stock In</option>
+                  <option value="out">Stock Out</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="m-quantity">Quantity</label>
+                <input type="number" id="m-quantity" min="1" step="1" placeholder="5" required>
+              </div>
+              <div class="form-group form-grid--full">
+                <label for="m-note">Note</label>
+                <input type="text" id="m-note" placeholder="Supplier delivery or counter issue" required>
+              </div>
+              <div class="form-grid--full">
+                <button class="btn btn--primary btn--block" type="submit">Record Movement</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">History</p>
+              <h2 class="panel__title">Recent Movements</h2>
+            </div>
+          </div>
+          <div class="stack-list" id="movement-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Users Tab ────────────────────────────────── -->
+    <div class="tab-content" id="tab-users">
+      <div class="section-title">
+        <h2>Registered Customers</h2>
+      </div>
+      <div class="stack-list" id="user-list"></div>
+    </div>
+
+    <!-- ─── Shares Tab ───────────────────────────────── -->
+    <div class="tab-content" id="tab-shares">
+      <div class="layout-grid layout-grid--2">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Access Share</p>
+              <h2 class="panel__title">Invite Teammates</h2>
+            </div>
+          </div>
+          <form id="share-form">
+            <div class="form-grid">
+              <div class="form-group form-grid--full">
+                <label for="s-name">Teammate Name</label>
+                <input type="text" id="s-name" placeholder="Aditi Shah" required>
+              </div>
+              <div class="form-group form-grid--full">
+                <label for="s-email">Email</label>
+                <input type="email" id="s-email" placeholder="aditi@example.com" required>
+              </div>
+              <div class="form-group form-grid--full">
+                <label for="s-role">Access Role</label>
+                <select id="s-role" required>
+                  <option value="Viewer">Viewer</option>
+                  <option value="Editor">Editor</option>
+                </select>
+              </div>
+              <div class="form-grid--full">
+                <button class="btn btn--primary btn--block" type="submit">Create Share</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Active Shares</p>
+              <h2 class="panel__title">Shared Access</h2>
+            </div>
+          </div>
+          <div class="stack-list" id="share-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:2rem;">
+      <button class="btn btn--ghost btn--sm" id="reset-btn" type="button">Reset Demo Data</button>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-bottom-nav" id="mobile-nav">
+    <button data-tab="overview"><span class="nav-icon">📊</span>Overview</button>
+    <button data-tab="requests"><span class="nav-icon">📋</span>Requests</button>
+    <button data-tab="inventory"><span class="nav-icon">📦</span>Inventory</button>
+    <button data-tab="movements"><span class="nav-icon">🔄</span>Moves</button>
+    <button data-tab="users"><span class="nav-icon">👥</span>Users</button>
+  </nav>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

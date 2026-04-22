@@ -1,273 +1,689 @@
-const http = require("http");
-const fs = require("fs/promises");
+require("dotenv").config();
+
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const path = require("path");
-const { readStore, writeStore, resetStore, createInviteToken, randomUUID } = require("./lib/store");
+const { connectDB } = require("./lib/db");
 
+const User = require("./lib/models/User");
+const Product = require("./lib/models/Product");
+const Movement = require("./lib/models/Movement");
+const Request = require("./lib/models/Request");
+const Share = require("./lib/models/Share");
+
+const app = express();
 const PORT = process.env.PORT || 3000;
-const ROOT = __dirname;
+const JWT_SECRET = process.env.JWT_SECRET || "stockpilot-fallback-secret";
+const COOKIE_NAME = "stockpilot_token";
 
-async function readJsonBody(req) {
-  const chunks = [];
+/* ─── Middleware ─────────────────────────────────────────── */
 
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "public")));
 
-  const raw = Buffer.concat(chunks).toString("utf8");
-  if (!raw) {
-    return {};
-  }
+function signToken(user) {
+  return jwt.sign(
+    { id: user._id, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
+function authMiddleware(req, res, next) {
+  const token = req.cookies[COOKIE_NAME];
+  if (!token) return res.status(401).json({ message: "Not authenticated." });
 
   try {
-    return JSON.parse(raw);
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
   } catch {
-    const error = new Error("Request body must be valid JSON.");
-    error.statusCode = 400;
-    throw error;
+    return res.status(401).json({ message: "Invalid or expired token." });
   }
 }
 
-function sendJson(res, statusCode, payload) {
-  res.writeHead(statusCode, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-  });
-  res.end(JSON.stringify(payload));
+function adminOnly(req, res, next) {
+  if (req.user.role !== "admin")
+    return res.status(403).json({ message: "Admin access required." });
+  next();
 }
 
-function sendText(res, statusCode, text) {
-  res.writeHead(statusCode, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end(text);
+function customerOnly(req, res, next) {
+  if (req.user.role !== "customer")
+    return res.status(403).json({ message: "Customer access required." });
+  next();
 }
 
-function getContentType(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
+/* ─── Auth Routes ────────────────────────────────────────── */
 
-  if (ext === ".html") return "text/html; charset=utf-8";
-  if (ext === ".css") return "text/css; charset=utf-8";
-  if (ext === ".js") return "application/javascript; charset=utf-8";
-  if (ext === ".json") return "application/json; charset=utf-8";
-  return "application/octet-stream";
-}
-
-async function serveStatic(req, res) {
-  const pathname = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`).pathname;
-  const urlPath = pathname === "/" ? "/index.html" : pathname;
-  const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-  const filePath = path.join(ROOT, safePath);
-
-  if (!filePath.startsWith(ROOT)) {
-    sendText(res, 403, "Forbidden");
-    return;
-  }
-
+app.post("/api/auth/register", async (req, res) => {
   try {
-    const content = await fs.readFile(filePath);
-    res.writeHead(200, { "Content-Type": getContentType(filePath) });
-    res.end(content);
-  } catch {
-    sendText(res, 404, "Not found");
-  }
-}
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res
+        .status(400)
+        .json({ message: "Name, email, and password are required." });
 
-function validateProduct(payload) {
+    if (password.length < 6)
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters." });
+
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing)
+      return res
+        .status(400)
+        .json({ message: "An account with this email already exists." });
+
+    const user = await User.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      role: "customer",
+    });
+
+    const token = signToken(user);
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    });
+
+    res.status(201).json({
+      message: "Account created successfully.",
+      user: user.toSafeJSON(),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Registration failed." });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    if (user.status === "suspended")
+      return res
+        .status(403)
+        .json({ message: "Account suspended. Contact admin." });
+
+    const valid = await user.comparePassword(password);
+    if (!valid)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    const token = signToken(user);
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    });
+
+    res.json({ message: "Login successful.", user: user.toSafeJSON() });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Login failed." });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  res.clearCookie(COOKIE_NAME);
+  res.json({ message: "Logged out." });
+});
+
+app.get("/api/auth/me", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found." });
+    res.json({ user: user.toSafeJSON() });
+  } catch (err) {
+    res.status(500).json({ message: "Could not fetch user." });
+  }
+});
+
+/* ─── Admin Routes ───────────────────────────────────────── */
+
+app.get(
+  "/api/admin/dashboard",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const [products, movements, shares, pendingRequests, users] =
+        await Promise.all([
+          Product.find().sort({ updatedAt: -1 }),
+          Movement.find().sort({ createdAt: -1 }),
+          Share.find().sort({ createdAt: -1 }),
+          Request.find({ status: "pending" }).sort({ createdAt: -1 }),
+          User.find({ role: "customer" })
+            .select("-password -__v")
+            .sort({ createdAt: -1 }),
+        ]);
+
+      res.json({ products, movements, shares, pendingRequests, users });
+    } catch (err) {
+      res.status(500).json({ message: "Could not load dashboard." });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/products",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const { name, sku, category, supplier, price, quantity, threshold } =
+        req.body;
+      const err = validateProduct(req.body);
+      if (err) return res.status(400).json({ message: err });
+
+      const product = await Product.create({
+        name: name.trim(),
+        sku: sku.trim().toUpperCase(),
+        category: category.trim(),
+        supplier: supplier.trim(),
+        price: Number(price),
+        quantity: Number(quantity),
+        threshold: Number(threshold),
+        createdBy: req.user.id,
+      });
+
+      res.status(201).json({ message: "Product added.", product });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not add product." });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/movements",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const err = validateMovement(req.body);
+      if (err) return res.status(400).json({ message: err });
+
+      const product = await Product.findById(req.body.productId);
+      if (!product)
+        return res.status(404).json({ message: "Product not found." });
+
+      const qty = Number(req.body.quantity);
+      if (req.body.type === "out" && qty > product.quantity)
+        return res
+          .status(400)
+          .json({ message: "Outgoing quantity exceeds available stock." });
+
+      product.quantity += req.body.type === "in" ? qty : -qty;
+      await product.save();
+
+      const movement = await Movement.create({
+        type: req.body.type,
+        productId: product._id,
+        productName: product.name,
+        quantity: qty,
+        note: req.body.note.trim(),
+        amount: product.price * qty,
+        createdBy: req.user.id,
+      });
+
+      res.status(201).json({ message: "Movement recorded.", movement });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not record movement." });
+    }
+  }
+);
+
+app.delete(
+  "/api/admin/products/:id",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const product = await Product.findById(req.params.id);
+      if (!product)
+        return res.status(404).json({ message: "Product not found." });
+
+      await Movement.deleteMany({ productId: product._id });
+      await Product.findByIdAndDelete(req.params.id);
+
+      res.json({ message: "Product deleted." });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not delete product." });
+    }
+  }
+);
+
+app.get(
+  "/api/admin/requests",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const filter = {};
+      if (req.query.status) filter.status = req.query.status;
+      const requests = await Request.find(filter).sort({ createdAt: -1 });
+      res.json({ requests });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: "Could not load requests." });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/requests/:id/approve",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const changeReq = await Request.findById(req.params.id);
+      if (!changeReq)
+        return res.status(404).json({ message: "Request not found." });
+      if (changeReq.status !== "pending")
+        return res
+          .status(400)
+          .json({ message: "Request already processed." });
+
+      changeReq.status = "approved";
+      changeReq.reviewedBy = req.user.id;
+      changeReq.reviewNote = req.body.note || "Approved";
+      changeReq.reviewedAt = new Date();
+      await changeReq.save();
+
+      /* Execute the change */
+      if (changeReq.type === "add_product") {
+        const p = changeReq.payload;
+        await Product.create({
+          name: p.name,
+          sku: p.sku,
+          category: p.category,
+          supplier: p.supplier,
+          price: p.price,
+          quantity: p.quantity,
+          threshold: p.threshold,
+          createdBy: changeReq.requestedBy,
+        });
+      } else if (changeReq.type === "record_movement") {
+        const p = changeReq.payload;
+        const product = await Product.findById(p.productId);
+        if (product) {
+          const qty = Number(p.quantity);
+          product.quantity += p.type === "in" ? qty : -qty;
+          if (product.quantity < 0) product.quantity = 0;
+          await product.save();
+          await Movement.create({
+            type: p.type,
+            productId: product._id,
+            productName: product.name,
+            quantity: qty,
+            note: p.note || "",
+            amount: product.price * qty,
+            createdBy: changeReq.requestedBy,
+          });
+        }
+      } else if (changeReq.type === "delete_product") {
+        const p = changeReq.payload;
+        await Movement.deleteMany({ productId: p.productId });
+        await Product.findByIdAndDelete(p.productId);
+      }
+
+      res.json({ message: "Request approved and executed." });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not approve request." });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/requests/:id/reject",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const changeReq = await Request.findById(req.params.id);
+      if (!changeReq)
+        return res.status(404).json({ message: "Request not found." });
+      if (changeReq.status !== "pending")
+        return res
+          .status(400)
+          .json({ message: "Request already processed." });
+
+      changeReq.status = "rejected";
+      changeReq.reviewedBy = req.user.id;
+      changeReq.reviewNote = req.body.note || "Rejected";
+      changeReq.reviewedAt = new Date();
+      await changeReq.save();
+
+      res.json({ message: "Request rejected." });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not reject request." });
+    }
+  }
+);
+
+app.get("/api/admin/users", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const users = await User.find({ role: "customer" })
+      .select("-password -__v")
+      .sort({ createdAt: -1 });
+    res.json({ users });
+  } catch (err) {
+    res.status(500).json({ message: "Could not load users." });
+  }
+});
+
+app.post(
+  "/api/admin/users/:id/toggle-status",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found." });
+      user.status = user.status === "active" ? "suspended" : "active";
+      await user.save();
+      res.json({
+        message: `User ${user.status === "active" ? "activated" : "suspended"}.`,
+        user: user.toSafeJSON(),
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Could not update user status." });
+    }
+  }
+);
+
+app.post("/api/admin/shares", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const err = validateShare(req.body);
+    if (err) return res.status(400).json({ message: err });
+
+    const share = await Share.create({
+      name: req.body.name.trim(),
+      email: req.body.email.trim().toLowerCase(),
+      role: req.body.role,
+      token:
+        "INV-" +
+        require("crypto").randomUUID().slice(0, 8).toUpperCase(),
+      createdBy: req.user.id,
+    });
+
+    res.status(201).json({ message: "Share access created.", share });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err.message || "Could not create share access." });
+  }
+});
+
+app.delete(
+  "/api/admin/shares/:id",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const share = await Share.findByIdAndDelete(req.params.id);
+      if (!share)
+        return res.status(404).json({ message: "Share record not found." });
+      res.json({ message: "Share access revoked." });
+    } catch (err) {
+      res.status(500).json({ message: "Could not revoke share access." });
+    }
+  }
+);
+
+app.post("/api/admin/reset", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    await Product.deleteMany({});
+    await Movement.deleteMany({});
+    await Share.deleteMany({});
+    await Request.deleteMany({});
+    await seedProducts();
+    res.json({ message: "Demo data restored." });
+  } catch (err) {
+    res.status(500).json({ message: "Could not reset data." });
+  }
+});
+
+/* ─── Customer Routes ────────────────────────────────────── */
+
+app.get(
+  "/api/customer/dashboard",
+  authMiddleware,
+  customerOnly,
+  async (req, res) => {
+    try {
+      const [products, movements, myRequests] = await Promise.all([
+        Product.find().sort({ updatedAt: -1 }),
+        Movement.find().sort({ createdAt: -1 }),
+        Request.find({ requestedBy: req.user.id }).sort({ createdAt: -1 }),
+      ]);
+      res.json({ products, movements, myRequests });
+    } catch (err) {
+      res.status(500).json({ message: "Could not load dashboard." });
+    }
+  }
+);
+
+app.post(
+  "/api/customer/requests",
+  authMiddleware,
+  customerOnly,
+  async (req, res) => {
+    try {
+      const { type, payload } = req.body;
+      if (
+        !type ||
+        !["add_product", "record_movement", "delete_product"].includes(type)
+      )
+        return res.status(400).json({ message: "Invalid request type." });
+
+      if (!payload)
+        return res.status(400).json({ message: "Payload is required." });
+
+      if (type === "add_product") {
+        const err = validateProduct(payload);
+        if (err) return res.status(400).json({ message: err });
+      }
+
+      if (type === "record_movement") {
+        const err = validateMovement(payload);
+        if (err) return res.status(400).json({ message: err });
+      }
+
+      const user = await User.findById(req.user.id);
+      const changeReq = await Request.create({
+        type,
+        payload,
+        requestedBy: req.user.id,
+        requestedByName: user ? user.name : "Unknown",
+      });
+
+      res.status(201).json({
+        message: "Change request submitted for admin review.",
+        request: changeReq,
+      });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: err.message || "Could not submit request." });
+    }
+  }
+);
+
+app.get(
+  "/api/customer/requests",
+  authMiddleware,
+  customerOnly,
+  async (req, res) => {
+    try {
+      const requests = await Request.find({ requestedBy: req.user.id }).sort({
+        createdAt: -1,
+      });
+      res.json({ requests });
+    } catch (err) {
+      res.status(500).json({ message: "Could not load requests." });
+    }
+  }
+);
+
+app.delete(
+  "/api/customer/requests/:id",
+  authMiddleware,
+  customerOnly,
+  async (req, res) => {
+    try {
+      const changeReq = await Request.findOne({
+        _id: req.params.id,
+        requestedBy: req.user.id,
+      });
+      if (!changeReq)
+        return res.status(404).json({ message: "Request not found." });
+      if (changeReq.status !== "pending")
+        return res
+          .status(400)
+          .json({ message: "Only pending requests can be cancelled." });
+
+      await Request.findByIdAndDelete(req.params.id);
+      res.json({ message: "Request cancelled." });
+    } catch (err) {
+      res.status(500).json({ message: "Could not cancel request." });
+    }
+  }
+);
+
+/* ─── Page Routes ────────────────────────────────────────── */
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.get("/admin", authMiddleware, adminOnly, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/customer", authMiddleware, customerOnly, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "customer.html"));
+});
+
+/* ─── Validation Helpers ─────────────────────────────────── */
+
+function validateProduct(p) {
   if (
-    !payload.name ||
-    !payload.sku ||
-    !payload.category ||
-    !payload.supplier ||
-    !Number.isFinite(payload.price) ||
-    payload.price <= 0 ||
-    !Number.isFinite(payload.quantity) ||
-    payload.quantity < 0 ||
-    !Number.isFinite(payload.threshold) ||
-    payload.threshold <= 0
-  ) {
-    return "Provide valid inventory item details.";
-  }
-
+    !p.name ||
+    !p.sku ||
+    !p.category ||
+    !p.supplier ||
+    !Number.isFinite(Number(p.price)) ||
+    Number(p.price) <= 0 ||
+    !Number.isFinite(Number(p.quantity)) ||
+    Number(p.quantity) < 0 ||
+    !p.location
+  )
+    return "Provide valid inventory item details including location.";
   return "";
 }
 
-function validateMovement(payload) {
+function validateMovement(p) {
   if (
-    !payload.productId ||
-    !["in", "out"].includes(payload.type) ||
-    !Number.isFinite(payload.quantity) ||
-    payload.quantity <= 0 ||
-    !payload.note
-  ) {
+    !p.productId ||
+    !["in", "out"].includes(p.type) ||
+    !Number.isFinite(Number(p.quantity)) ||
+    Number(p.quantity) <= 0 ||
+    !p.note
+  )
     return "Provide a valid movement type, item, quantity, and note.";
-  }
-
   return "";
 }
 
-function validateShare(payload) {
-  if (!payload.name || !payload.email || !["Viewer", "Editor"].includes(payload.role)) {
-    return "Provide a valid teammate name, email, and access role.";
-  }
-
+function validateShare(p) {
+  if (
+    !p.name ||
+    !p.email ||
+    !["Viewer", "Editor"].includes(p.role)
+  )
+    return "Provide a valid name, email, and role.";
   return "";
 }
 
-async function handleApi(req, res) {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const isMovementRoute = url.pathname === "/api/movements" || url.pathname === "/api/sales";
+/* ─── Seed Data ──────────────────────────────────────────── */
 
-  if (req.method === "GET" && url.pathname === "/api/dashboard") {
-    const store = await readStore();
-    sendJson(res, 200, store);
-    return;
-  }
+async function seedProducts() {
+  const seedData = [
+    ["Premium Notebook", "STK-101", "Stationery", "Campus Paper Co.", 299, 34, "Aisle 1, Shelf A", "8901234567890"],
+    ["Wireless Mouse", "ELE-220", "Electronics", "Pixel Devices", 799, 7, "Aisle 3, Shelf C", "8901234567891"],
+    ["Ceramic Coffee Mug", "HOM-045", "Home Goods", "Daily Living", 249, 18, "Aisle 2, Shelf B", "8901234567892"],
+    ["Desk Study Lamp", "LGT-310", "Lighting", "BrightNest", 1299, 12, "Aisle 3, Shelf D", "8901234567893"],
+    ["Steel Water Bottle", "LIF-125", "Lifestyle", "Urban Carry", 499, 29, "Aisle 2, Shelf A", "8901234567894"],
+    ["Portable Bluetooth Speaker", "ELE-415", "Electronics", "SoundMint", 1899, 5, "Aisle 3, Shelf C", "8901234567895"],
+    ["Document File Folder", "STK-145", "Stationery", "Campus Paper Co.", 149, 42, "Aisle 1, Shelf B", "8901234567896"],
+    ["Mini Desk Planter", "DEC-212", "Decor", "LeafLine Studio", 349, 9, "Aisle 4, Shelf A", "8901234567897"],
+    ["Wireless Keyboard", "ELE-305", "Electronics", "Pixel Devices", 1499, 14, "Aisle 3, Shelf C", "8901234567898"],
+    ["Whiteboard Marker Pack", "STK-188", "Stationery", "WriteRight Supply", 219, 48, "Aisle 1, Shelf A", "8901234567899"],
+    ["USB Flash Drive 64GB", "ELE-640", "Electronics", "ByteKart", 649, 19, "Aisle 3, Shelf B", "8901234567900"],
+    ["Wireless Earbuds", "ELE-710", "Electronics", "SoundMint", 2199, 11, "Aisle 3, Shelf A", "8901234567901"],
+    ["LED Night Lamp", "LGT-160", "Lighting", "BrightNest", 699, 20, "Aisle 4, Shelf B", "8901234567902"],
+    ["Canvas Tote Bag", "LIF-220", "Lifestyle", "Urban Carry", 599, 15, "Aisle 2, Shelf C", "8901234567903"],
+    ["Photo Frame", "DEC-260", "Decor", "LeafLine Studio", 459, 18, "Aisle 4, Shelf A", "8901234567904"],
+    ["Scented Candle", "DEC-270", "Decor", "LeafLine Studio", 349, 27, "Aisle 4, Shelf C", "8901234567905"],
+  ];
 
-  if (req.method === "POST" && url.pathname === "/api/products") {
-    const payload = await readJsonBody(req);
-    const error = validateProduct(payload);
-    if (error) {
-      sendJson(res, 400, { message: error });
-      return;
-    }
-
-    const store = await readStore();
-    store.products.unshift({
-      id: randomUUID(),
-      name: payload.name.trim(),
-      sku: payload.sku.trim().toUpperCase(),
-      category: payload.category.trim(),
-      supplier: payload.supplier.trim(),
-      price: Number(payload.price),
-      quantity: Number(payload.quantity),
-      threshold: Number(payload.threshold),
-      updatedAt: new Date().toISOString(),
+  const products = [];
+  for (const [name, sku, category, supplier, price, quantity, location, barcode] of seedData) {
+    products.push({
+      name, sku, category, supplier, price, quantity, location, barcode
     });
-    await writeStore(store);
-    sendJson(res, 201, { message: "Inventory item added." });
-    return;
   }
-
-  if (req.method === "POST" && isMovementRoute) {
-    const payload = await readJsonBody(req);
-    const error = validateMovement(payload);
-    if (error) {
-      sendJson(res, 400, { message: error });
-      return;
-    }
-
-    const store = await readStore();
-    const product = store.products.find((item) => item.id === payload.productId);
-
-    if (!product) {
-      sendJson(res, 404, { message: "Selected inventory item was not found." });
-      return;
-    }
-
-    const quantity = Number(payload.quantity);
-
-    if (payload.type === "out" && quantity > product.quantity) {
-      sendJson(res, 400, { message: "Outgoing quantity exceeds available stock." });
-      return;
-    }
-
-    product.quantity += payload.type === "in" ? quantity : -quantity;
-    product.updatedAt = new Date().toISOString();
-
-    store.movements.unshift({
-      id: randomUUID(),
-      type: payload.type,
-      productId: product.id,
-      productName: product.name,
-      quantity,
-      note: payload.note.trim(),
-      amount: product.price * quantity,
-      createdAt: new Date().toISOString(),
-    });
-
-    await writeStore(store);
-    sendJson(res, 201, { message: "Inventory movement recorded." });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/shares") {
-    const payload = await readJsonBody(req);
-    const error = validateShare(payload);
-    if (error) {
-      sendJson(res, 400, { message: error });
-      return;
-    }
-
-    const store = await readStore();
-    store.shares.unshift({
-      id: randomUUID(),
-      name: payload.name.trim(),
-      email: payload.email.trim().toLowerCase(),
-      role: payload.role,
-      token: createInviteToken(),
-      status: "Active",
-      createdAt: new Date().toISOString(),
-    });
-    await writeStore(store);
-    sendJson(res, 201, { message: "Access invite created." });
-    return;
-  }
-
-  if (req.method === "DELETE" && url.pathname.startsWith("/api/products/")) {
-    const productId = url.pathname.split("/").pop();
-    const store = await readStore();
-    const target = store.products.find((item) => item.id === productId);
-
-    if (!target) {
-      sendJson(res, 404, { message: "Inventory item not found." });
-      return;
-    }
-
-    store.products = store.products.filter((item) => item.id !== productId);
-    store.movements = store.movements.filter((entry) => entry.productId !== productId);
-    await writeStore(store);
-    sendJson(res, 200, { message: "Inventory item deleted." });
-    return;
-  }
-
-  if (req.method === "DELETE" && url.pathname.startsWith("/api/shares/")) {
-    const shareId = url.pathname.split("/").pop();
-    const store = await readStore();
-    const target = store.shares.find((item) => item.id === shareId);
-
-    if (!target) {
-      sendJson(res, 404, { message: "Shared access record not found." });
-      return;
-    }
-
-    store.shares = store.shares.filter((item) => item.id !== shareId);
-    await writeStore(store);
-    sendJson(res, 200, { message: "Shared access revoked." });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/reset") {
-    await resetStore();
-    sendJson(res, 200, { message: "Demo data restored." });
-    return;
-  }
-
-  sendJson(res, 404, { message: "API route not found." });
+  await Product.insertMany(products);
 }
 
-const server = http.createServer(async (req, res) => {
-  try {
-    if ((req.url || "").startsWith("/api/")) {
-      await handleApi(req, res);
-      return;
-    }
-
-    await serveStatic(req, res);
-  } catch (error) {
-    sendJson(res, error.statusCode || 500, {
-      message: error.message || "Internal server error.",
+async function seedAdmin() {
+  const exists = await User.findOne({ role: "admin" });
+  if (!exists) {
+    await User.create({
+      name: "Admin",
+      email: "admin@stockpilot.com",
+      password: "admin123",
+      role: "admin",
     });
+    console.log("Default admin created: admin@stockpilot.com / admin123");
   }
-});
+}
 
-server.listen(PORT, async () => {
-  console.log(`StockPilot server running on http://localhost:${PORT}`);
-});
+async function ensureSeedData() {
+  const count = await Product.countDocuments();
+  if (count === 0) {
+    await seedProducts();
+    console.log("Seed products inserted.");
+  }
+}
+
+/* ─── Start ──────────────────────────────────────────────── */
+
+(async () => {
+  await connectDB();
+  await seedAdmin();
+  await ensureSeedData();
+  app.listen(PORT, () => {
+    console.log(`StockPilot server running on http://localhost:${PORT}`);
+  });
+})();
