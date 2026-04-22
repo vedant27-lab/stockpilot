@@ -129,6 +129,69 @@ a {
   transition: transform 180ms ease, background 180ms ease;
 }
 
+.topbar {
+  position: sticky;
+  top: max(0.75rem, env(safe-area-inset-top));
+  z-index: 30;
+  width: min(76rem, calc(100% - 2rem));
+  margin: max(1rem, calc(0.5rem + env(safe-area-inset-top))) auto 0;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.topbar__brand {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.topbar__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.topbar__title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.topbar__links,
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topbar__links a {
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 700;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.topbar__links a:hover,
+.topbar__links a:focus-visible {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--text);
+}
+
+.topbar__cta {
+  min-height: 2.45rem;
+  padding: 0.65rem 1rem;
+}
+
 .theme-fab:hover {
   transform: translateY(-1px);
 }
@@ -136,7 +199,7 @@ a {
 .page-shell {
   width: min(76rem, calc(100% - 2rem));
   margin: 0 auto;
-  padding: max(4.5rem, calc(var(--space-6) + env(safe-area-inset-top))) 0
+  padding: max(2rem, var(--space-6)) 0
     calc(var(--space-7) + env(safe-area-inset-bottom));
 }
 
@@ -510,6 +573,17 @@ th {
 }
 
 @media (max-width: 64rem) {
+  .topbar {
+    width: min(100% - 1rem, 76rem);
+    border-radius: 1.4rem;
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .topbar__links {
+    flex-wrap: wrap;
+  }
+
   .hero,
   .stats-grid,
   .grid-layout,
@@ -535,9 +609,32 @@ th {
     min-height: 2.5rem;
   }
 
+  .topbar {
+    top: max(0.5rem, env(safe-area-inset-top));
+    width: min(100% - 0.75rem, 100%);
+    margin-top: max(0.75rem, env(safe-area-inset-top));
+    align-items: start;
+    border-radius: 1.2rem;
+  }
+
+  .topbar__links,
+  .topbar__actions {
+    width: 100%;
+  }
+
+  .topbar__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar__links a,
+  .topbar__cta {
+    text-align: center;
+  }
+
   .page-shell {
     width: min(100% - 0.75rem, 100%);
-    padding-top: max(4rem, calc(3rem + env(safe-area-inset-top)));
+    padding-top: max(1rem, calc(0.75rem + env(safe-area-inset-top)));
   }
 
   .hero__content,

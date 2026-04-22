@@ -19,6 +19,22 @@
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
 
+  <nav class="topbar" aria-label="Primary">
+    <div class="topbar__brand">
+      <span class="topbar__eyebrow">StockPilot</span>
+      <a class="topbar__title" href="#main-content">Inventory Workspace</a>
+    </div>
+    <div class="topbar__links">
+      <a href="#analytics-section">Analytics</a>
+      <a href="#inventory-section">Inventory</a>
+      <a href="#workspace-section">Workspace</a>
+      <a href="#activity-section">Activity</a>
+    </div>
+    <div class="topbar__actions">
+      <a class="button button--ghost topbar__cta" href="#inventory-section">Add Item</a>
+    </div>
+  </nav>
+
   <button
     class="theme-fab"
     id="theme-toggle"
@@ -180,7 +196,7 @@
         </article>
       </section>
 
-      <section class="workspace-grid">
+      <section class="workspace-grid" id="workspace-section">
         <article class="panel panel--wide">
           <div class="panel__header panel__header--split">
             <div>
@@ -239,7 +255,7 @@
         </article>
       </section>
 
-      <section class="workspace-grid">
+      <section class="workspace-grid" id="activity-section">
         <article class="panel panel--history" aria-labelledby="movement-history-title">
           <div class="panel__header">
             <div>
