@@ -351,6 +351,26 @@ document.getElementById("req-movement-form").addEventListener("submit", async (e
   }
 });
 
+document.getElementById("req-message-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    subject: document.getElementById("rmsg-subject").value.trim(),
+    message: document.getElementById("rmsg-message").value.trim(),
+  };
+  try {
+    await api("/api/customer/requests", {
+      method: "POST",
+      body: JSON.stringify({ type: "send_message", payload }),
+    });
+    e.target.reset();
+    setStatus("Message sent to admin.", "success");
+    await loadDashboard();
+    switchTab("my-requests");
+  } catch (err) {
+    setStatus(err.message, "error");
+  }
+});
+
 /* ─── My Requests ────────────────────────────────────────── */
 
 function formatRequestPayload(req) {
@@ -361,6 +381,8 @@ function formatRequestPayload(req) {
     return `<strong>${p.type === "in" ? "Stock In" : "Stock Out"}</strong> · ${p.quantity} units · "${p.note}"`;
   } else if (req.type === "delete_product") {
     return `Delete product: <strong>${p.productName || p.productId}</strong>`;
+  } else if (req.type === "send_message") {
+    return `<strong>${p.subject}</strong>: ${p.message}`;
   }
   return JSON.stringify(p);
 }
@@ -444,4 +466,9 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
   }
 
   await loadDashboard();
+
+  // Auto-refresh every 15 seconds
+  setInterval(() => {
+    loadDashboard();
+  }, 15000);
 })();

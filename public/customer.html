@@ -195,6 +195,33 @@
           </form>
         </div>
       </div>
+
+      <!-- Send Message to Admin -->
+      <div class="layout-grid layout-grid--1" style="margin-top: 1rem;">
+        <div class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Message</p>
+              <h2 class="panel__title">Send Message to Admin</h2>
+            </div>
+          </div>
+          <form id="req-message-form">
+            <div class="form-grid">
+              <div class="form-group form-grid--full">
+                <label for="rmsg-subject">Subject</label>
+                <input type="text" id="rmsg-subject" placeholder="General Inquiry" required>
+              </div>
+              <div class="form-group form-grid--full">
+                <label for="rmsg-message">Message</label>
+                <textarea id="rmsg-message" rows="3" placeholder="Write your message here..." required></textarea>
+              </div>
+              <div class="form-grid--full">
+                <button class="btn btn--primary btn--block" type="submit">Send Message</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- ─── My Requests Tab ──────────────────────────── -->

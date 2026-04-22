@@ -374,7 +374,10 @@ function renderInventory() {
           <td data-label="Units">${p.quantity}</td>
           <td data-label="Value">${formatCurrency(p.quantity * p.price)}</td>
           <td data-label="Location"><span class="pill ${low ? "pill--low" : "pill--healthy"}">${p.location}</span></td>
-          <td data-label="Action"><button class="btn btn--danger btn--sm" onclick="deleteProduct('${p._id}')">Delete</button></td>
+          <td data-label="Action">
+            <button class="btn btn--ghost btn--sm" onclick="openEditModal('${p._id}')">Edit</button>
+            <button class="btn btn--danger btn--sm" onclick="deleteProduct('${p._id}')">Delete</button>
+          </td>
         </tr>`;
     })
     .join("");
@@ -415,6 +418,48 @@ async function deleteProduct(id) {
     setStatus(err.message, "error");
   }
 }
+
+function openEditModal(id) {
+  const p = state.products.find((x) => x._id === id);
+  if (!p) return;
+  document.getElementById("ep-id").value = p._id;
+  document.getElementById("ep-name").value = p.name;
+  document.getElementById("ep-sku").value = p.sku;
+  document.getElementById("ep-category").value = p.category;
+  document.getElementById("ep-supplier").value = p.supplier;
+  document.getElementById("ep-price").value = p.price;
+  document.getElementById("ep-quantity").value = p.quantity;
+  document.getElementById("ep-location").value = p.location || "";
+  document.getElementById("ep-barcode").value = p.barcode || "";
+  document.getElementById("edit-product-modal").classList.add("modal--open");
+}
+
+function closeEditModal() {
+  document.getElementById("edit-product-modal").classList.remove("modal--open");
+}
+
+document.getElementById("edit-product-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("ep-id").value;
+  const product = {
+    name: document.getElementById("ep-name").value.trim(),
+    sku: document.getElementById("ep-sku").value.trim(),
+    category: document.getElementById("ep-category").value.trim(),
+    supplier: document.getElementById("ep-supplier").value.trim(),
+    price: Number(document.getElementById("ep-price").value),
+    quantity: Number(document.getElementById("ep-quantity").value),
+    location: document.getElementById("ep-location").value.trim(),
+    barcode: document.getElementById("ep-barcode").value.trim(),
+  };
+  try {
+    await api(`/api/admin/products/${id}`, { method: "PUT", body: JSON.stringify(product) });
+    closeEditModal();
+    setStatus(`"${product.name}" updated.`, "success");
+    await loadDashboard();
+  } catch (err) {
+    setStatus(err.message, "error");
+  }
+});
 
 /* ─── Movements ──────────────────────────────────────────── */
 
@@ -612,4 +657,9 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
   }
 
   await loadDashboard();
+
+  // Auto-refresh every 15 seconds
+  setInterval(() => {
+    loadDashboard();
+  }, 15000);
 })();

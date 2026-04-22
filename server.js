@@ -246,6 +246,38 @@ app.post(
   }
 );
 
+app.put(
+  "/api/admin/products/:id",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const product = await Product.findById(req.params.id);
+      if (!product) return res.status(404).json({ message: "Product not found." });
+
+      const err = validateProduct(req.body);
+      if (err) return res.status(400).json({ message: err });
+
+      Object.assign(product, {
+        name: req.body.name,
+        sku: req.body.sku,
+        category: req.body.category,
+        supplier: req.body.supplier,
+        price: req.body.price,
+        quantity: req.body.quantity,
+        location: req.body.location,
+        barcode: req.body.barcode,
+        updatedAt: new Date()
+      });
+
+      await product.save();
+      res.json({ message: "Product updated.", product });
+    } catch (err) {
+      res.status(500).json({ message: err.message || "Could not update product." });
+    }
+  }
+);
+
 app.delete(
   "/api/admin/products/:id",
   authMiddleware,
@@ -316,7 +348,8 @@ app.post(
           supplier: p.supplier,
           price: p.price,
           quantity: p.quantity,
-          threshold: p.threshold,
+          location: p.location,
+          barcode: p.barcode,
           createdBy: changeReq.requestedBy,
         });
       } else if (changeReq.type === "record_movement") {
@@ -493,7 +526,7 @@ app.post(
       const { type, payload } = req.body;
       if (
         !type ||
-        !["add_product", "record_movement", "delete_product"].includes(type)
+        !["add_product", "record_movement", "delete_product", "send_message"].includes(type)
       )
         return res.status(400).json({ message: "Invalid request type." });
 
