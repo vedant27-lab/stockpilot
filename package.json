@@ -4,6 +4,7 @@
   "description": "Accessible inventory and sales dashboard with a minimal Node.js backend.",
   "main": "server.js",
   "scripts": {
+    "dev": "node server.js",
     "start": "node server.js"
   },
   "keywords": [

@@ -55,20 +55,29 @@ The backend exposes a small REST-like API:
 
 - `GET /api/dashboard` returns products and sales
 - `POST /api/products` creates a product
-- `POST /api/sales` records a sale
+- `POST /api/movements` records stock-in and stock-out activity
+- `POST /api/sales` is also accepted as a backward-compatible alias for stock-out style integrations
 - `DELETE /api/products/:id` deletes a product and related sales
 - `POST /api/reset` restores the demo dataset
 
 ## Run Locally
 
+This project uses one Node server for both the backend API and the frontend files. You do not need separate commands.
+
 1. Open a terminal in the project folder.
-2. Start the server:
+2. Start the full app with a single command:
 
 ```bash
 npm start
 ```
 
-3. Open:
+You can also use:
+
+```bash
+npm run dev
+```
+
+3. Open the app in your browser:
 
 ```text
 http://localhost:3000

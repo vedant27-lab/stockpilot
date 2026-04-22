@@ -1,6 +1,28 @@
 {
   "products": [
     {
+      "id": "a048b33a-b7bc-44cb-89f6-e7da7778bb03",
+      "name": "acer",
+      "sku": "102",
+      "category": "moveable",
+      "supplier": "amazon",
+      "price": 120000,
+      "quantity": 1,
+      "threshold": 1,
+      "updatedAt": "2026-04-22T10:29:09.853Z"
+    },
+    {
+      "id": "db22b85c-1b12-432b-af89-5f874ffcbeb4",
+      "name": "Test Item",
+      "sku": "TST-1",
+      "category": "Test",
+      "supplier": "Demo",
+      "price": 100,
+      "quantity": 4,
+      "threshold": 1,
+      "updatedAt": "2026-04-22T10:25:19.328Z"
+    },
+    {
       "id": "25ae171f-13e4-47db-984c-265a59690e32",
       "name": "Premium Notebook",
       "sku": "STK-101",
@@ -772,6 +794,16 @@
     }
   ],
   "movements": [
+    {
+      "id": "640c47cf-4394-4d55-9fa0-49535bc1392a",
+      "type": "out",
+      "productId": "db22b85c-1b12-432b-af89-5f874ffcbeb4",
+      "productName": "Test Item",
+      "quantity": 1,
+      "note": "compat test",
+      "amount": 100,
+      "createdAt": "2026-04-22T10:25:19.328Z"
+    },
     {
       "id": "3e589788-3e9f-459f-a4b4-4e5eb3bcab42",
       "type": "out",

@@ -14,7 +14,17 @@ async function readJsonBody(req) {
   }
 
   const raw = Buffer.concat(chunks).toString("utf8");
-  return raw ? JSON.parse(raw) : {};
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const error = new Error("Request body must be valid JSON.");
+    error.statusCode = 400;
+    throw error;
+  }
 }
 
 function sendJson(res, statusCode, payload) {
@@ -41,7 +51,8 @@ function getContentType(filePath) {
 }
 
 async function serveStatic(req, res) {
-  const urlPath = req.url === "/" ? "/index.html" : req.url;
+  const pathname = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`).pathname;
+  const urlPath = pathname === "/" ? "/index.html" : pathname;
   const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(ROOT, safePath);
 
@@ -101,7 +112,8 @@ function validateShare(payload) {
 }
 
 async function handleApi(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const isMovementRoute = url.pathname === "/api/movements" || url.pathname === "/api/sales";
 
   if (req.method === "GET" && url.pathname === "/api/dashboard") {
     const store = await readStore();
@@ -134,7 +146,7 @@ async function handleApi(req, res) {
     return;
   }
 
-  if (req.method === "POST" && url.pathname === "/api/movements") {
+  if (req.method === "POST" && isMovementRoute) {
     const payload = await readJsonBody(req);
     const error = validateMovement(payload);
     if (error) {
@@ -243,14 +255,16 @@ async function handleApi(req, res) {
 
 const server = http.createServer(async (req, res) => {
   try {
-    if (req.url.startsWith("/api/")) {
+    if ((req.url || "").startsWith("/api/")) {
       await handleApi(req, res);
       return;
     }
 
     await serveStatic(req, res);
   } catch (error) {
-    sendJson(res, 500, { message: error.message || "Internal server error." });
+    sendJson(res, error.statusCode || 500, {
+      message: error.message || "Internal server error.",
+    });
   }
 });
 

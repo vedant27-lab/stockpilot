@@ -4,6 +4,24 @@ function sendJson(res, statusCode, payload) {
   res.status(statusCode).json(payload);
 }
 
+function getRequestBody(req) {
+  if (!req.body) {
+    return {};
+  }
+
+  if (typeof req.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      const error = new Error("Request body must be valid JSON.");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  return req.body;
+}
+
 function validateProduct(payload) {
   if (
     !payload.name ||
@@ -47,7 +65,8 @@ function validateShare(payload) {
 
 module.exports = async (req, res) => {
   try {
-    const pathname = new URL(req.url, "https://stockpilot.vercel.app").pathname;
+    const pathname = new URL(req.url || "/", "http://localhost").pathname;
+    const isMovementRoute = pathname === "/api/movements" || pathname === "/api/sales";
 
     if (req.method === "GET" && pathname === "/api/dashboard") {
       const store = await readStore();
@@ -56,7 +75,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === "POST" && pathname === "/api/products") {
-      const payload = req.body || {};
+      const payload = getRequestBody(req);
       const error = validateProduct(payload);
       if (error) {
         sendJson(res, 400, { message: error });
@@ -80,8 +99,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (req.method === "POST" && pathname === "/api/movements") {
-      const payload = req.body || {};
+    if (req.method === "POST" && isMovementRoute) {
+      const payload = getRequestBody(req);
       const error = validateMovement(payload);
       if (error) {
         sendJson(res, 400, { message: error });
@@ -122,7 +141,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === "POST" && pathname === "/api/shares") {
-      const payload = req.body || {};
+      const payload = getRequestBody(req);
       const error = validateShare(payload);
       if (error) {
         sendJson(res, 400, { message: error });
@@ -185,6 +204,8 @@ module.exports = async (req, res) => {
 
     sendJson(res, 404, { message: "API route not found." });
   } catch (error) {
-    sendJson(res, 500, { message: error.message || "Internal server error." });
+    sendJson(res, error.statusCode || 500, {
+      message: error.message || "Internal server error.",
+    });
   }
 };
