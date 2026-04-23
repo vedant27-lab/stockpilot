@@ -310,12 +310,50 @@ app.get(
     try {
       const filter = {};
       if (req.query.status) filter.status = req.query.status;
-      const requests = await Request.find(filter).sort({ createdAt: -1 });
+      const requests = await Request.find(filter)
+        .populate("requestedBy", "name email")
+        .populate("reviewedBy", "name email")
+        .sort({ createdAt: -1 });
       res.json({ requests });
     } catch (err) {
       res
         .status(500)
         .json({ message: "Could not load requests." });
+    }
+  }
+);
+
+app.get(
+  "/api/admin/requests/export",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const requests = await Request.find()
+        .populate("requestedBy", "name email")
+        .populate("reviewedBy", "name email")
+        .sort({ createdAt: -1 });
+
+      let csv = "ID,Type,Status,Requested By,Requested At,Reviewed By,Reviewed At,Review Note\n";
+      requests.forEach((r) => {
+        const id = r._id;
+        const type = r.type;
+        const status = r.status;
+        const reqBy = r.requestedBy ? r.requestedBy.name : r.requestedByName || "Unknown";
+        const reqAt = new Date(r.createdAt).toISOString();
+        const revBy = r.reviewedBy ? r.reviewedBy.name : "";
+        const revAt = r.reviewedAt ? new Date(r.reviewedAt).toISOString() : "";
+        const note = (r.reviewNote || "").replace(/"/g, '""');
+
+        csv += `"${id}","${type}","${status}","${reqBy}","${reqAt}","${revBy}","${revAt}","${note}"\n`;
+      });
+
+      res.header("Content-Type", "text/csv");
+      res.attachment("requests_log.csv");
+      return res.send(csv);
+    } catch (err) {
+      console.error("Export error:", err);
+      res.status(500).json({ message: "Could not export requests." });
     }
   }
 );

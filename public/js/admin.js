@@ -304,9 +304,32 @@ function renderRequests() {
 
 async function renderRequestHistory() {
   const el = document.getElementById("request-history");
+  const logsTb = document.getElementById("logs-table");
   try {
     const data = await api("/api/admin/requests");
-    const processed = (data.requests || []).filter((r) => r.status !== "pending");
+    const reqs = data.requests || [];
+
+    if (logsTb) {
+      if (!reqs.length) {
+        logsTb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><strong>No logs found</strong></div></td></tr>`;
+      } else {
+        logsTb.innerHTML = reqs.map((r) => {
+          const reqBy = r.requestedBy ? r.requestedBy.name : r.requestedByName || "Unknown";
+          const revBy = r.reviewedBy ? r.reviewedBy.name : "-";
+          const dDate = formatDate(r.createdAt);
+          return `<tr>
+            <td data-label="Date">${dDate}</td>
+            <td data-label="Action"><strong>${r.type.replace(/_/g, " ")}</strong></td>
+            <td data-label="Requested By">${reqBy}</td>
+            <td data-label="Status"><span class="pill pill--${r.status}">${r.status}</span></td>
+            <td data-label="Reviewed By">${revBy}</td>
+            <td data-label="Note">${r.reviewNote || "-"}</td>
+          </tr>`;
+        }).join("");
+      }
+    }
+
+    const processed = reqs.filter((r) => r.status !== "pending");
     if (!processed.length) {
       el.innerHTML = `<div class="empty-state"><strong>No history</strong><p>Processed requests will appear here.</p></div>`;
       return;
@@ -319,7 +342,7 @@ async function renderRequestHistory() {
           <div class="request-card__header">
             <div>
               <div class="request-card__type">${r.type.replace(/_/g, " ")}</div>
-              <div class="meta">By ${r.requestedByName || "Customer"} · ${formatDate(r.createdAt)}</div>
+              <div class="meta">By ${r.requestedBy ? r.requestedBy.name : r.requestedByName || "Customer"} · ${formatDate(r.createdAt)}</div>
             </div>
             <span class="pill pill--${r.status}">${r.status}</span>
           </div>
@@ -329,7 +352,8 @@ async function renderRequestHistory() {
       )
       .join("");
   } catch {
-    el.innerHTML = `<div class="empty-state"><strong>Could not load history</strong></div>`;
+    if (el) el.innerHTML = `<div class="empty-state"><strong>Could not load history</strong></div>`;
+    if (logsTb) logsTb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><strong>Could not load logs</strong></div></td></tr>`;
   }
 }
 
@@ -362,6 +386,25 @@ async function rejectRequest(id) {
     setStatus(err.message, "error");
   }
 }
+
+document.getElementById("download-logs-btn")?.addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/admin/requests/export");
+    if (!res.ok) throw new Error("Failed to export logs");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "requests_log.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    setStatus("Logs downloaded successfully.", "success");
+  } catch (err) {
+    setStatus(err.message, "error");
+  }
+});
 
 /* ─── Inventory ──────────────────────────────────────────── */
 
