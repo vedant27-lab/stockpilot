@@ -1,126 +1,149 @@
-# StockPilot
+# 🚀 StockPilot
 
-StockPilot is a responsive full-stack mini project for Web Technology Lab. It demonstrates a business-focused web application for a small retail store using simple technologies instead of complex frameworks.
+<div align="center">
+  <h1>StockPilot</h1>
+  <p><strong>A Next-Generation Intelligent Inventory Management System</strong></p>
+  <br />
+  <img src="screenshot_dashboard.png" alt="StockPilot Dashboard" width="800" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+  <br /><br />
+  <a href="#live-website-link">🌐 <strong>Live Website</strong></a> &nbsp; | &nbsp; 
+  <a href="#apk-download-link">📱 <strong>Download Android APK</strong></a>
+</div>
 
-The app helps a business:
+---
 
-- manage product inventory
-- record daily sales
-- monitor low-stock items
-- review recent sales activity
-- use a clean interface in both light mode and dark mode
+## 📖 Table of Contents
+- [Project Overview](#-project-overview)
+- [System Architecture](#-system-architecture)
+- [Core Features](#-core-features)
+  - [Admin Panel](#-admin-panel)
+  - [Customer Panel](#-customer-panel)
+  - [AI Inventory Assistant](#-ai-inventory-assistant)
+- [Tech Stack](#-tech-stack)
+- [Security & Performance](#-security--performance)
+- [Screenshots](#-screenshots)
+- [Installation & Setup](#-installation--setup)
 
-## Tech Stack
+---
 
-- `HTML5`
-- `CSS3`
-- `Vanilla JavaScript`
-- `Node.js` built-in `http` server for the backend
-- JSON file storage for persistent demo data
+## 🌟 Project Overview
+**StockPilot** goes beyond traditional inventory tracking by introducing an advanced **Role-Based Access Control (RBAC)** architecture, an integrated **Approval Workflow System**, and a state-of-the-art **AI-Powered Inventory Assistant**. 
 
-## Key Improvements
+Designed with a premium, responsive dark/light mode interface, StockPilot is built to help administrators and customers seamlessly manage products, record stock movements, track dynamic analytics, and automate tasks through natural language queries.
 
-- Better accessibility with keyboard focus states, skip link, semantic structure, visible labels, and stronger contrast
-- More scalable responsive sizing using rem-based spacing and typography
-- Light and dark mode toggle with saved theme preference
-- Simple backend API for products, sales, and reset actions
-- Data persistence in `data/store.json` instead of browser-only storage
+---
 
-## Features
+## 🏗️ System Architecture
 
-- Add new products with name, category, price, quantity, and low-stock limit
-- Record sales and automatically reduce inventory quantity
-- Show live summary cards for product count, total units, revenue, and low-stock alerts
-- Search inventory by product name or category
-- View recent sales and restock notifications
-- Reset the app back to demo data
+StockPilot is structured as a highly scalable full-stack application.
 
-## Project Structure
+1. **Client Layer (Web & Mobile)**: 
+   - A lightning-fast Vanilla HTML/CSS/JS frontend ensures zero framework overhead. 
+   - Cross-platform ready: Deployed as a web application and packaged natively as an **Android APK** using Capacitor/Cordova.
+2. **Application Layer (Node.js & Express.js)**: 
+   - A RESTful API backend handling business logic, JWT authentication, request validation, and AI prompt orchestration.
+3. **Data Layer (MongoDB Atlas)**: 
+   - A NoSQL cloud database utilizing Mongoose schemas for `Users`, `Products`, `Movements`, `Requests`, and `Shares`.
+4. **AI Processing Layer (Groq API)**: 
+   - Integrates the blazing-fast `Llama-3.1-8b-instant` LLM to provide contextual, data-aware inventory insights to the user.
 
-```text
-stockpilot/
-|-- index.html
-|-- style.css
-|-- script.js
-|-- server.js
-|-- package.json
-|-- data/
-|   `-- store.json
-`-- README.md
-```
+---
 
-## API Endpoints
+## ✨ Core Features
 
-The backend exposes a small REST-like API:
+### 👨‍💼 Admin Panel
+- **Complete Inventory Control**: Easily add, update, and delete products. Track essential metadata including SKU, Supplier, Category, Price, Quantity, Storage Location, and Barcode.
+- **Stock Movement Tracking**: Seamlessly record stock-in and stock-out operations. The system calculates amount totals automatically and maintains a full audit log.
+- **Request Approval Workflow**: Customers can submit inventory change requests. Admins can review, approve, and execute them with a single click, or reject them with feedback notes.
+- **User Management**: Suspend or activate customer accounts to maintain platform security. Generate secure, one-time `Share Tokens` to grant external viewers access to inventory data.
+- **Analytics Dashboard**: Real-time summary cards, latest movement feeds, and low-stock indicators.
 
-- `GET /api/dashboard` returns products and sales
-- `POST /api/products` creates a product
-- `POST /api/movements` records stock-in and stock-out activity
-- `POST /api/sales` is also accepted as a backward-compatible alias for stock-out style integrations
-- `DELETE /api/products/:id` deletes a product and related sales
-- `POST /api/reset` restores the demo dataset
+### 👥 Customer Panel
+- **Secure Browsing**: Customers can view available stock levels and categories but are restricted from viewing sensitive business data (like supplier details or exact warehouse locations).
+- **Interactive Requests**: Customers can actively participate in inventory management by submitting requests to add new products or record movements.
+- **Request Tracking**: Monitor the lifecycle of submitted requests (Pending, Approved, Rejected) directly from the customer dashboard.
 
-## Run Locally
+### 🤖 AI Inventory Assistant
+- **Context-Aware Insights**: Powered by the **Groq API**, users can ask natural language questions about their inventory (e.g., *"Which electronics are low on stock?"*).
+- **Role-Based AI Logic**: The AI intelligently adapts its responses based on the user's role. It will hide SKUs and sensitive data from customers, while giving full administrative data to admins.
+- **Dynamic Mermaid Charts**: The AI is programmed to generate visual `pie` charts and `xychart-beta` bar graphs inside the chat interface to visualize stock distributions dynamically!
 
-This project uses one Node server for both the backend API and the frontend files. You do not need separate commands.
+---
 
-1. Open a terminal in the project folder.
-2. Start the full app with a single command:
+## 🛠️ Tech Stack
 
-```bash
-npm start
-```
+- **Frontend**: HTML5, CSS3 (Modern Variables & Responsive Design), Vanilla JavaScript (ES6+).
+- **Backend Runtime**: Node.js.
+- **Web Framework**: Express.js.
+- **Database**: MongoDB Atlas (NoSQL) with Mongoose ORM.
+- **Authentication**: JWT (JSON Web Tokens), `bcryptjs` for secure password hashing, `cookie-parser` for XSS-proof HTTP-only cookies.
+- **AI Integration**: Groq Cloud API (`Llama-3.1-8b-instant`).
+- **Mobile Environment**: Capacitor/Cordova wrapper for Android deployment.
 
-You can also use:
+---
 
-```bash
-npm run dev
-```
+## 🔒 Security & Performance
 
-3. Open the app in your browser:
+- **Hardened Authentication**: User sessions are securely managed via `HttpOnly` cookies, completely mitigating Cross-Site Scripting (XSS) token theft.
+- **Role-Based Middlewares**: Strict backend routing protections (`adminOnly`, `customerOnly`) ensure authorization at the server level.
+- **AI Rate Limiting**: The Groq AI insights route utilizes an in-memory rate limiter (max 5 requests per minute per user) to prevent API abuse and control cloud costs.
+- **Robust Validation**: Server-side validation safeguards database integrity when adding products, logging movements, and processing user inputs.
 
-```text
-http://localhost:3000
-```
+---
 
-## Push To GitHub Repo
+## 📸 Screenshots
 
-Use your target repository:
+<div align="center">
+  <img src="screenshot_dashboard.png" alt="Admin Dashboard" width="45%" style="border-radius: 8px; margin: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+  <img src="screenshot_ai.png" alt="AI Chat Interface" width="45%" style="border-radius: 8px; margin: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+</div>
 
-```text
-https://github.com/vedant27-lab/stockpilot.git
-```
+---
 
-Example commands:
+## 🚀 Installation & Setup
 
-```bash
-git init
-git branch -M main
-git remote add origin https://github.com/vedant27-lab/stockpilot.git
-git add .
-git commit -m "Build accessible full-stack StockPilot app"
-git push -u origin main
-```
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) Connection URI
+- [Groq](https://groq.com/) API Key
 
-## Hosting Options
+### Local Development
 
-Because this project has a Node backend, use a host that supports Node.js server apps.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/vedant27-lab/stockpilot.git
+   cd stockpilot
+   ```
 
-### Render
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-1. Push the project to the GitHub repository.
-2. Sign in to Render.
-3. Create a new Web Service from the GitHub repo.
-4. Use:
-   Start Command: `npm start`
-5. Deploy and use the generated public URL.
+3. **Environment Setup:**
+   Create a `.env` file in the root directory and add your credentials:
+   ```env
+   PORT=3000
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_super_secret_jwt_key
+   GROQ_API_KEY=your_groq_cloud_api_key
+   ```
 
-### Railway
+4. **Start the application:**
+   ```bash
+   npm run dev
+   ```
+   Navigate to `http://localhost:3000` in your web browser.
 
-1. Push the project to GitHub.
-2. Import the repository into Railway.
-3. Deploy with the default Node.js detection.
+---
 
-## Suggested Mini Project Description
+## 📦 Deployment Links
 
-StockPilot is a dynamic and accessible inventory and sales management web application developed using HTML, CSS, JavaScript, and Node.js. It allows a small business to maintain product records, track sales, identify low-stock items, and use a modern responsive interface with theme support.
+### 🌐 [Live Website Application](https://stockpilot-mpne.onrender.com/) 
+
+### 📱 [Download Android APK](https://drive.google.com/file/d/16imkT3gR3rYfuBK_M48GwIiio4IM2FTr/view?usp=sharing) 
+
+---
+<div align="center">
+  <i>Developed with ❤️ by Vedant</i>
+</div>
