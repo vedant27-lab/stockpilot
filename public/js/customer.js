@@ -102,6 +102,23 @@ function renderAll() {
   renderInventory();
   renderMovementOptions();
   renderMyRequests();
+  renderCategories();
+}
+
+function renderCategories() {
+  const list = document.getElementById("category-list");
+  if (!list) return;
+  const categoriesMap = new Map();
+  state.products.forEach(p => {
+    if (p.category) {
+      const normalized = p.category.trim().toLowerCase();
+      if (!categoriesMap.has(normalized)) {
+        categoriesMap.set(normalized, p.category.trim());
+      }
+    }
+  });
+  const categories = [...categoriesMap.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  list.innerHTML = categories.map(c => `<option value="${c.replace(/"/g, '&quot;')}">`).join("");
 }
 
 function renderStats() {
@@ -449,6 +466,60 @@ function applyTheme(theme) {
 
 document.getElementById("theme-toggle").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* ─── Insights (AI Chat) ──────────────────────────────────── */
+
+document.getElementById("chat-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("chat-input");
+  const query = input.value.trim();
+  if (!query) return;
+
+  const chatBox = document.getElementById("chat-box");
+
+  const userMsg = document.createElement("div");
+  userMsg.className = "chat-msg chat-msg--user animate-in";
+  userMsg.innerHTML = `<div class="chat-msg__bubble">${query}</div>`;
+  chatBox.appendChild(userMsg);
+  
+  input.value = "";
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  const loadingMsg = document.createElement("div");
+  loadingMsg.className = "chat-msg chat-msg--bot animate-in";
+  loadingMsg.innerHTML = `<div class="chat-msg__bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  chatBox.appendChild(loadingMsg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  try {
+    const data = await api("/api/insights", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+    });
+
+    loadingMsg.innerHTML = `<div class="chat-msg__bubble">${marked.parse(data.reply)}</div>`;
+
+    // Render Mermaid graphs if any
+    const mermaidBlocks = loadingMsg.querySelectorAll(".language-mermaid");
+    if (mermaidBlocks.length > 0) {
+      mermaidBlocks.forEach((block, index) => {
+        const parent = block.parentElement; // The <pre> tag
+        const div = document.createElement("div");
+        div.className = "mermaid";
+        div.textContent = block.textContent;
+        parent.replaceWith(div);
+      });
+      if (typeof mermaid !== "undefined") {
+        mermaid.initialize({ startOnLoad: false, theme: document.documentElement.dataset.theme === "dark" ? "dark" : "default" });
+        mermaid.run({ querySelector: '.mermaid' });
+      }
+    }
+
+  } catch (err) {
+    loadingMsg.innerHTML = `<div class="chat-msg__bubble" style="color: var(--danger)">Error: ${err.message}</div>`;
+  }
+  chatBox.scrollTop = chatBox.scrollHeight;
 });
 
 /* ─── Init ───────────────────────────────────────────────── */
