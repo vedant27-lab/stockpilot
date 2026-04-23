@@ -180,7 +180,7 @@ app.post(
   adminOnly,
   async (req, res) => {
     try {
-      const { name, sku, category, supplier, price, quantity, threshold } =
+      const { name, sku, category, supplier, price, quantity, location, barcode } =
         req.body;
       const err = validateProduct(req.body);
       if (err) return res.status(400).json({ message: err });
@@ -188,16 +188,18 @@ app.post(
       const product = await Product.create({
         name: name.trim(),
         sku: sku.trim().toUpperCase(),
-        category: category.trim(),
+        category: normalizeCategory(category),
         supplier: supplier.trim(),
         price: Number(price),
         quantity: Number(quantity),
-        threshold: Number(threshold),
+        location: location ? location.trim() : "Unassigned",
+        barcode: barcode ? barcode.trim() : "",
         createdBy: req.user.id,
       });
 
       res.status(201).json({ message: "Product added.", product });
     } catch (err) {
+      console.error("Add product error:", err);
       res
         .status(500)
         .json({ message: err.message || "Could not add product." });
@@ -261,7 +263,7 @@ app.put(
       Object.assign(product, {
         name: req.body.name,
         sku: req.body.sku,
-        category: req.body.category,
+        category: normalizeCategory(req.body.category),
         supplier: req.body.supplier,
         price: req.body.price,
         quantity: req.body.quantity,
@@ -344,7 +346,7 @@ app.post(
         await Product.create({
           name: p.name,
           sku: p.sku,
-          category: p.category,
+          category: normalizeCategory(p.category),
           supplier: p.supplier,
           price: p.price,
           quantity: p.quantity,
@@ -497,6 +499,124 @@ app.post("/api/admin/reset", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+/* ─── Rate Limiter (System Design) ───────────────────────── */
+const insightsRateLimit = new Map();
+function insightsRateLimiter(req, res, next) {
+  const userId = req.user.id;
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  const maxRequests = 5; // max 5 requests per minute per user
+
+  if (!insightsRateLimit.has(userId)) {
+    insightsRateLimit.set(userId, { count: 1, firstRequest: now });
+    return next();
+  }
+
+  const record = insightsRateLimit.get(userId);
+  if (now - record.firstRequest > windowMs) {
+    insightsRateLimit.set(userId, { count: 1, firstRequest: now });
+    return next();
+  }
+
+  if (record.count >= maxRequests) {
+    return res.status(429).json({ message: "Too many requests. Please wait a minute to avoid API abuse." });
+  }
+
+  record.count++;
+  next();
+}
+
+/* ─── Insights Route ─────────────────────────────────────── */
+
+app.post(
+  "/api/insights",
+  authMiddleware,
+  insightsRateLimiter,
+  async (req, res) => {
+    try {
+      const { query } = req.body;
+      if (!query) return res.status(400).json({ message: "Query is required." });
+
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "Groq API key not found. Please add GROQ_API_KEY to your .env file." });
+      }
+
+      // Fetch all products to give context to the LLM
+      const products = await Product.find().select("name sku category price quantity location");
+      
+      const safeData = products.map(p => {
+        if (req.user.role === "admin") return p;
+        return {
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          quantity: p.quantity
+        };
+      });
+
+      const roleInstructions = req.user.role === "admin"
+        ? "You are talking to an ADMIN. You have full access to share SKUs, exact storage locations, and detailed data."
+        : "You are talking to a CUSTOMER. Only provide general availability, category, and pricing. Do NOT reveal SKUs, exact stock storage locations, or sensitive business details.";
+
+      const systemPrompt = `You are a highly capable, professional, and helpful Inventory Insights Assistant for StockPilot. 
+
+Below is the current inventory data for your reference:
+${JSON.stringify(safeData)}
+
+IMPORTANT INSTRUCTIONS:
+1. ALWAYS format your responses in clear, readable Markdown.
+2. Use bullet points, bold text, or Markdown tables when listing products or details.
+3. NEVER output raw JSON data to the user. Always convert data into natural, human-friendly language.
+4. If the user asks you to add products or perform actions, inform them that you are just an insights assistant and cannot modify the database directly. Tell them to use the forms in the dashboard.
+5. If asked for graphs/charts, use \`\`\`mermaid code blocks. STRICT RULES:
+   - ONLY use 'pie' or 'xychart-beta'. NO scatter plots or other types.
+   - You MUST place each part of the chart on a NEW LINE.
+   - Example Pie Chart:
+     pie title Stock Distribution
+     "Electronics" : 40
+     "Stationery" : 60
+   - Example Bar Chart:
+     xychart-beta
+     title "Stock by Category"
+     x-axis ["Electronics", "Stationery"]
+     y-axis "Quantity"
+     bar [40, 60]
+6. Keep your tone helpful, concise, and easy to read.
+7. ${roleInstructions}`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: query }
+          ],
+          temperature: 0.7,
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Groq API Error:", errorText);
+        throw new Error("Failed to fetch insights from Groq API.");
+      }
+
+      const data = await response.json();
+      const reply = data.choices[0].message.content;
+
+      res.json({ reply });
+    } catch (err) {
+      res.status(500).json({ message: err.message || "Could not load insights." });
+    }
+  }
+);
+
 /* ─── Customer Routes ────────────────────────────────────── */
 
 app.get(
@@ -618,7 +738,12 @@ app.get("/customer", authMiddleware, customerOnly, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "customer.html"));
 });
 
-/* ─── Validation Helpers ─────────────────────────────────── */
+/* ─── Validation & Helpers ─────────────────────────────────── */
+
+function normalizeCategory(cat) {
+  if (!cat) return "";
+  return cat.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
 
 function validateProduct(p) {
   if (
@@ -629,10 +754,9 @@ function validateProduct(p) {
     !Number.isFinite(Number(p.price)) ||
     Number(p.price) <= 0 ||
     !Number.isFinite(Number(p.quantity)) ||
-    Number(p.quantity) < 0 ||
-    !p.location
+    Number(p.quantity) < 0
   )
-    return "Provide valid inventory item details including location.";
+    return "Provide valid inventory item details (location is optional).";
   return "";
 }
 
