@@ -1,0 +1,9 @@
+{
+  "appId": "com.stockpilot.app",
+  "appName": "Stockpilot",
+  "webDir": "www",
+  "server": {
+    "url": "https://stockpilot-mpne.onrender.com",
+    "cleartext": true
+  }
+}

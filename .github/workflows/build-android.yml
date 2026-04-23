@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android-app/**'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install Dependencies
+      run: |
+        cd android-app
+        npm install
+
+    - name: Sync Capacitor
+      run: |
+        cd android-app
+        npx cap sync android
+
+    - name: Build APK
+      run: |
+        cd android-app/android
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Stockpilot-App
+        path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
