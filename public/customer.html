@@ -20,6 +20,7 @@
     </div>
     <div class="topbar__nav" id="tab-nav">
       <button class="tab-nav-btn" data-tab="overview">Overview</button>
+      <button class="tab-nav-btn" data-tab="insights">Insights</button>
       <button class="tab-nav-btn" data-tab="inventory">Inventory</button>
       <button class="tab-nav-btn" data-tab="request-forms">Submit Request</button>
       <button class="tab-nav-btn" data-tab="my-requests">My Requests</button>
@@ -83,6 +84,31 @@
       </div>
     </div>
 
+    <!-- ─── Insights Tab ─────────────────────────────── -->
+    <div class="tab-content" id="tab-insights">
+      <div class="layout-grid layout-grid--1">
+        <div class="panel chat-panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">AI Assistant</p>
+              <h2 class="panel__title">Inventory Insights</h2>
+            </div>
+          </div>
+          <div class="chat-box" id="chat-box">
+            <div class="chat-msg chat-msg--bot">
+              <div class="chat-msg__bubble">
+                Hello! I am your AI Inventory Assistant powered by Groq. Ask me anything about stock availability, categories, or pricing!
+              </div>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-form">
+            <input type="text" id="chat-input" placeholder="e.g. Do we have any notebooks in stock?" required>
+            <button type="submit" class="btn btn--primary">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Inventory Tab (Read-Only) ────────────────── -->
     <div class="tab-content" id="tab-inventory">
       <div class="panel">
@@ -131,7 +157,8 @@
               </div>
               <div class="form-group">
                 <label for="rp-category">Category</label>
-                <input type="text" id="rp-category" placeholder="Stationery" required>
+                <input type="text" id="rp-category" list="category-list" placeholder="Stationery" required>
+                <datalist id="category-list"></datalist>
               </div>
               <div class="form-group">
                 <label for="rp-supplier">Supplier</label>
@@ -147,7 +174,7 @@
               </div>
               <div class="form-group">
                 <label for="rp-location">Location</label>
-                <input type="text" id="rp-location" placeholder="Aisle 1, Shelf B" required>
+                <input type="text" id="rp-location" placeholder="Aisle 1, Shelf B">
               </div>
               <div class="form-group">
                 <label for="rp-barcode">Barcode</label>
@@ -237,11 +264,14 @@
   <!-- Mobile Bottom Nav -->
   <nav class="mobile-bottom-nav" id="mobile-nav">
     <button data-tab="overview"><span class="nav-icon">📊</span>Overview</button>
+    <button data-tab="insights"><span class="nav-icon">💡</span>Insights</button>
     <button data-tab="inventory"><span class="nav-icon">📦</span>Inventory</button>
     <button data-tab="request-forms"><span class="nav-icon">📝</span>Request</button>
     <button data-tab="my-requests"><span class="nav-icon">📋</span>Status</button>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script src="/js/customer.js"></script>
 </body>
 </html>

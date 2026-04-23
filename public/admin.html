@@ -20,6 +20,7 @@
     </div>
     <div class="topbar__nav" id="tab-nav">
       <button class="tab-nav-btn" data-tab="overview">Overview</button>
+      <button class="tab-nav-btn" data-tab="insights">Insights</button>
       <button class="tab-nav-btn" data-tab="requests">
         Requests <span class="badge" id="pending-badge" style="display:none">0</span>
       </button>
@@ -87,6 +88,31 @@
       </div>
     </div>
 
+    <!-- ─── Insights Tab ─────────────────────────────── -->
+    <div class="tab-content" id="tab-insights">
+      <div class="layout-grid layout-grid--1">
+        <div class="panel chat-panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">AI Assistant</p>
+              <h2 class="panel__title">Inventory Insights</h2>
+            </div>
+          </div>
+          <div class="chat-box" id="chat-box">
+            <div class="chat-msg chat-msg--bot">
+              <div class="chat-msg__bubble">
+                Hello! I am your AI Inventory Assistant powered by Groq. Ask me anything about your stock, low supplies, or category trends.
+              </div>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-form">
+            <input type="text" id="chat-input" placeholder="e.g. Which items have low stock?" required>
+            <button type="submit" class="btn btn--primary">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Requests Tab ─────────────────────────────── -->
     <div class="tab-content" id="tab-requests">
       <div class="section-title">
@@ -147,7 +173,8 @@
               </div>
               <div class="form-group">
                 <label for="p-category">Category</label>
-                <input type="text" id="p-category" placeholder="Stationery" required>
+                <input type="text" id="p-category" list="category-list" placeholder="Stationery" required>
+                <datalist id="category-list"></datalist>
               </div>
               <div class="form-group">
                 <label for="p-supplier">Supplier</label>
@@ -163,7 +190,7 @@
               </div>
               <div class="form-group">
                 <label for="p-location">Location</label>
-                <input type="text" id="p-location" placeholder="Aisle 1, Shelf B" required>
+                <input type="text" id="p-location" placeholder="Aisle 1, Shelf B">
               </div>
               <div class="form-group">
                 <label for="p-barcode">Barcode</label>
@@ -309,7 +336,7 @@
           </div>
           <div class="form-group">
             <label for="ep-category">Category</label>
-            <input type="text" id="ep-category" required>
+            <input type="text" id="ep-category" list="category-list" required>
           </div>
           <div class="form-group">
             <label for="ep-supplier">Supplier</label>
@@ -325,7 +352,7 @@
           </div>
           <div class="form-group">
             <label for="ep-location">Location</label>
-            <input type="text" id="ep-location" required>
+            <input type="text" id="ep-location">
           </div>
           <div class="form-group">
             <label for="ep-barcode">Barcode</label>
@@ -343,12 +370,15 @@
   <!-- Mobile Bottom Nav -->
   <nav class="mobile-bottom-nav" id="mobile-nav">
     <button data-tab="overview"><span class="nav-icon">📊</span>Overview</button>
+    <button data-tab="insights"><span class="nav-icon">💡</span>Insights</button>
     <button data-tab="requests"><span class="nav-icon">📋</span>Requests</button>
     <button data-tab="inventory"><span class="nav-icon">📦</span>Inventory</button>
     <button data-tab="movements"><span class="nav-icon">🔄</span>Moves</button>
     <button data-tab="users"><span class="nav-icon">👥</span>Users</button>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script src="/js/admin.js"></script>
 </body>
 </html>
