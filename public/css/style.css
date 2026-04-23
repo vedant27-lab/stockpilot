@@ -819,6 +819,117 @@ td {
   font-size: 0.8125rem;
 }
 
+/* ─── Chat / Insights ───────────────────────────────────── */
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+  max-height: 70vh;
+}
+
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.chat-msg {
+  display: flex;
+  max-width: 85%;
+}
+
+.chat-msg--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-msg--bot {
+  align-self: flex-start;
+}
+
+.chat-msg__bubble {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.chat-msg--user .chat-msg__bubble {
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.chat-msg--bot .chat-msg__bubble {
+  background: var(--panel-strong);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 1rem;
+}
+
+.chat-form input {
+  flex: 1;
+}
+
+/* ─── Typing Indicator ──────────────────────────────────── */
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.1rem;
+}
+
+.typing-indicator span {
+  width: 0.4rem;
+  height: 0.4rem;
+  background-color: var(--muted);
+  border-radius: 50%;
+  animation: typing 1.4s infinite both;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Markdown Styles in Chat ───────────────────────────── */
+
+.chat-msg__bubble p { margin-bottom: 0.5rem; }
+.chat-msg__bubble p:last-child { margin-bottom: 0; }
+.chat-msg__bubble ul, .chat-msg__bubble ol { margin-left: 1.25rem; margin-bottom: 0.5rem; }
+.chat-msg__bubble li { margin-bottom: 0.25rem; }
+.chat-msg__bubble strong { font-weight: 700; }
+.chat-msg__bubble table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin: 0.5rem 0; 
+  font-size: 0.8125rem;
+}
+.chat-msg__bubble th, .chat-msg__bubble td { 
+  border: 1px solid var(--panel-border); 
+  padding: 0.35rem 0.5rem; 
+  text-align: left;
+}
+.chat-msg__bubble th { background: var(--glass); }
+
 /* ─── Modal ─────────────────────────────────────────────── */
 
 .modal {
@@ -902,11 +1013,11 @@ td {
 @media (max-width: 40rem) {
   body {
     font-size: 0.875rem;
-    padding-bottom: 4rem; /* space for bottom nav */
+    padding-bottom: 5rem; /* space for bottom nav */
   }
 
   .page-shell {
-    padding: 1rem 0.75rem 5rem;
+    padding: 1rem 0.75rem 6rem;
   }
 
   /* ── Topbar: compact header only ─── */
@@ -922,7 +1033,6 @@ td {
   /* Hide desktop nav on mobile — replaced by bottom bar */
   .topbar__nav { display: none; }
 
-  /* ── Bottom Tab Bar for Mobile ─── */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -938,10 +1048,19 @@ td {
     justify-content: space-around;
     align-items: stretch;
     gap: 0.125rem;
+    overflow-x: auto; /* allow horizontal scroll if too many items */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-bottom-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .mobile-bottom-nav button {
-    flex: 1;
+    flex: 1 0 auto;
+    min-width: 4rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -950,7 +1069,7 @@ td {
     background: transparent;
     border: none;
     color: var(--muted);
-    font-size: 0.625rem;
+    font-size: 0.55rem;
     font-weight: 700;
     cursor: pointer;
     border-radius: var(--radius-sm);
