@@ -9,15 +9,48 @@ async function getFileBase64(fileInput) {
   });
 }
 
-async function getLocationLog() {
+async function getLocationCity() {
   return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
+    if (!navigator.geolocation) return resolve("");
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(`Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`),
-      () => resolve(null)
+      async (pos) => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+          const data = await res.json();
+          resolve(data.address.city || data.address.town || data.address.village || data.address.county || "");
+        } catch {
+          resolve(`Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`);
+        }
+      },
+      () => resolve("")
     );
   });
 }
+
+function handleImageSelect(inputId, dateId, cityId) {
+  document.getElementById(inputId).addEventListener("change", async (e) => {
+    if (e.target.files.length > 0) {
+      const dInput = document.getElementById(dateId);
+      const cInput = document.getElementById(cityId);
+      if (!dInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dInput.value = now.toISOString().slice(0, 16);
+      }
+      if (!cInput.value) {
+        cInput.placeholder = "Locating...";
+        cInput.value = await getLocationCity();
+        cInput.placeholder = "e.g. New York";
+      }
+    }
+  });
+}
+
+setTimeout(() => {
+  handleImageSelect("p-image", "p-photo-date", "p-photo-city");
+  handleImageSelect("pp-image", "pp-photo-date", "pp-photo-city");
+  handleImageSelect("ep-image", "ep-photo-date", "ep-photo-city");
+}, 1000);
 
 /* ─── GROUP VIEW ──────────────────────────────────────── */
 async function enterGroup(id){
@@ -56,8 +89,15 @@ document.getElementById("edit-group-form").addEventListener("submit", async e =>
   } catch (err) { setStatus(err.message, "error"); }
 });
 
-document.getElementById("delete-group-btn").addEventListener("click", async () => {
-  if (!confirm("Are you sure you want to delete this workspace? This cannot be undone.")) return;
+document.getElementById("delete-group-btn").addEventListener("click", () => {
+  document.getElementById("delete-group-modal").classList.add("modal--open");
+});
+document.getElementById("dg-close").addEventListener("click", () => document.getElementById("delete-group-modal").classList.remove("modal--open"));
+document.getElementById("dg-overlay").addEventListener("click", () => document.getElementById("delete-group-modal").classList.remove("modal--open"));
+document.getElementById("dg-cancel").addEventListener("click", () => document.getElementById("delete-group-modal").classList.remove("modal--open"));
+
+document.getElementById("dg-confirm").addEventListener("click", async () => {
+  document.getElementById("delete-group-modal").classList.remove("modal--open");
   try {
     await api(`/api/groups/${S.currentGroup}`, { method: "DELETE" });
     setStatus("Workspace deleted.", "success");
@@ -87,15 +127,33 @@ function renderGroupStats(){
 
 function renderGroupChart(){
   const chart=document.getElementById("category-chart");
-  const catMap=new Map();S.groupData.products.forEach(p=>{catMap.set(p.category,(catMap.get(p.category)||0)+p.quantity)});
+  const tbody=document.getElementById("category-breakdown-table");
+  const catMap=new Map();
+  S.groupData.products.forEach(p=>{
+    if(!catMap.has(p.category)) catMap.set(p.category, {val:0, items:0, units:0, value:0});
+    const c = catMap.get(p.category);
+    c.val += p.quantity;
+    c.items++;
+    c.units += p.quantity;
+    c.value += (p.quantity * p.price);
+  });
   const entries=[...catMap.entries()];
+  
+  if(tbody) {
+    if(!entries.length) {
+      tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state"><strong>No data</strong></div></td></tr>`;
+    } else {
+      tbody.innerHTML=entries.map(([label, c])=>`<tr><td><strong>${label}</strong></td><td>${c.items}</td><td>${c.units}</td><td>${fmt$(c.value)}</td></tr>`).join("");
+    }
+  }
+
   if(!entries.length){chart.innerHTML=`<text x="50%" y="50%" text-anchor="middle" fill="currentColor" opacity="0.5">No data</text>`;return}
-  const max=Math.max(...entries.map(([,v])=>v),1);
+  const max=Math.max(...entries.map(([,c])=>c.val),1);
   const colors=["#6c8cff","#34d399","#fbbf24","#f87171","#a78bfa","#fb923c"];
   const barW=Math.max(40,Math.floor(420/entries.length)),gap=16,startX=56,baseY=210,chartH=170;
   let svg=`<line x1="40" y1="${baseY}" x2="580" y2="${baseY}" stroke="currentColor" opacity="0.15"/>`;
-  entries.forEach(([label,val],i)=>{const x=startX+i*(barW+gap),h=Math.max(14,Math.round((val/max)*chartH)),y=baseY-h,c=colors[i%colors.length];
-    svg+=`<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="8" fill="${c}" opacity="0.85"/><text x="${x+barW/2}" y="${y-6}" text-anchor="middle" font-size="12" fill="currentColor">${val}</text><text x="${x+barW/2}" y="${baseY+16}" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">${label}</text>`;
+  entries.forEach(([label,c],i)=>{const x=startX+i*(barW+gap),h=Math.max(14,Math.round((c.val/max)*chartH)),y=baseY-h,co=colors[i%colors.length];
+    svg+=`<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="8" fill="${co}" opacity="0.85"/><text x="${x+barW/2}" y="${y-6}" text-anchor="middle" font-size="12" fill="currentColor">${c.val}</text><text x="${x+barW/2}" y="${baseY+16}" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">${label}</text>`;
   });chart.innerHTML=svg;
 }
 
@@ -121,12 +179,12 @@ function renderGroupInventory(){
   const isAdmin=S.groupData.group.myRole==="owner"||S.groupData.group.myRole==="admin";
   if(!prods.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><strong>No items</strong></div></td></tr>`;return}
   tbody.innerHTML=prods.map(p=>`<tr>
-    <td data-label="Image">${p.imageUrl?`<div class="img-thumb" style="width:40px;height:40px;background-image:url('${p.imageUrl}');background-size:cover;border-radius:4px" title="${p.imageMeta?`Added on ${new Date(p.imageMeta.timestamp).toLocaleString()} from ${p.imageMeta.location}`:''}"></div>`:'-'}</td>
+    <td data-label="Image">${p.imageUrl?`<img loading="lazy" src="${p.imageUrl}" alt="${p.name}" class="img-thumb" style="width:48px;height:48px;object-fit:cover;border-radius:8px" title="${p.imageMeta?`Added on ${new Date(p.imageMeta.timestamp).toLocaleString()} from ${p.imageMeta.location}`:''}">`:'-'}</td>
     <td data-label="Item"><div class="product-cell"><strong>${p.name}</strong><span>${p.category}</span></div></td>
     <td data-label="SKU">${p.sku}</td><td data-label="Supplier">${p.supplier}</td>
     <td data-label="Units">${p.quantity}</td><td data-label="Value">${fmt$(p.quantity*p.price)}</td>
     <td data-label="Location"><span class="pill ${p.quantity<5?"pill--low":"pill--healthy"}">${p.location}</span></td>
-    <td data-label="Action">${isAdmin?`<button class="btn btn--ghost btn--sm" onclick="openEditModal('${p._id}','group')">Edit</button><button class="btn btn--danger btn--sm" onclick="deleteGroupProduct('${p._id}')">Del</button>`:`<button class="btn btn--ghost btn--sm" onclick="submitGroupRequest('delete_product',{productId:'${p._id}',productName:'${p.name.replace(/'/g,"\\'")}' })">Req Delete</button>`}</td>
+    <td data-label="Action"><div class="action-buttons">${p.imageUrl?`<button class="btn btn--primary btn--sm" onclick="window.downloadImages(['${p._id}'])">↓</button>`:""}${isAdmin?`<button class="btn btn--ghost btn--sm" onclick="openEditModal('${p._id}','group')">Edit</button><button class="btn btn--danger btn--sm" onclick="deleteGroupProduct('${p._id}')">Del</button>`:`<button class="btn btn--ghost btn--sm" onclick="submitGroupRequest('delete_product',{productId:'${p._id}',productName:'${p.name.replace(/'/g,"\\'")}' })">Req Delete</button>`}</div></td>
   </tr>`).join("");
 }
 document.getElementById("search-input")?.addEventListener("input",renderGroupInventory);
@@ -138,7 +196,8 @@ document.getElementById("product-form").addEventListener("submit",async e=>{
   const imgBase64 = await getFileBase64(imgInput);
   if (imgBase64) {
     b.image = imgBase64;
-    b.locationLog = await getLocationLog();
+    b.locationLog = document.getElementById("p-photo-city").value;
+    b.imageTimestamp = document.getElementById("p-photo-date").value;
   }
   try{await api(`/api/groups/${S.currentGroup}/products`,{method:"POST",body:JSON.stringify(b)});e.target.reset();setStatus("Product added.","success");await refreshGroup()}catch(err){setStatus(err.message,"error")}
 });
@@ -281,8 +340,8 @@ function renderPersonalInventory(){
   const tb=document.getElementById("p-inventory-table");
   if(!prods.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty-state"><strong>No items</strong></div></td></tr>`;return}
   tb.innerHTML=prods.map(p=>`<tr>
-    <td data-label="Image">${p.imageUrl?`<div class="img-thumb" style="width:40px;height:40px;background-image:url('${p.imageUrl}');background-size:cover;border-radius:4px" title="${p.imageMeta?`Added on ${new Date(p.imageMeta.timestamp).toLocaleString()} from ${p.imageMeta.location}`:''}"></div>`:'-'}</td>
-    <td data-label="Item"><div class="product-cell"><strong>${p.name}</strong><span>${p.category}</span></div></td><td data-label="SKU">${p.sku}</td><td data-label="Supplier">${p.supplier}</td><td data-label="Units">${p.quantity}</td><td data-label="Value">${fmt$(p.quantity*p.price)}</td><td data-label="Location"><span class="pill ${p.quantity<5?"pill--low":"pill--healthy"}">${p.location}</span></td><td data-label="Action"><button class="btn btn--ghost btn--sm" onclick="openEditModal('${p._id}','personal')">Edit</button><button class="btn btn--danger btn--sm" onclick="deletePersonalProduct('${p._id}')">Del</button></td></tr>`).join("");
+    <td data-label="Image">${p.imageUrl?`<img loading="lazy" src="${p.imageUrl}" alt="${p.name}" class="img-thumb" style="width:48px;height:48px;object-fit:cover;border-radius:8px" title="${p.imageMeta?`Added on ${new Date(p.imageMeta.timestamp).toLocaleString()} from ${p.imageMeta.location}`:''}">`:'-'}</td>
+    <td data-label="Item"><div class="product-cell"><strong>${p.name}</strong><span>${p.category}</span></div></td><td data-label="SKU">${p.sku}</td><td data-label="Supplier">${p.supplier}</td><td data-label="Units">${p.quantity}</td><td data-label="Value">${fmt$(p.quantity*p.price)}</td><td data-label="Location"><span class="pill ${p.quantity<5?"pill--low":"pill--healthy"}">${p.location}</span></td><td data-label="Action"><div class="action-buttons">${p.imageUrl?`<button class="btn btn--primary btn--sm" onclick="window.downloadImages(['${p._id}'])">↓</button>`:""}<button class="btn btn--ghost btn--sm" onclick="openEditModal('${p._id}','personal')">Edit</button><button class="btn btn--danger btn--sm" onclick="deletePersonalProduct('${p._id}')">Del</button></div></td></tr>`).join("");
 }
 document.getElementById("p-search")?.addEventListener("input",renderPersonalInventory);
 
@@ -293,7 +352,8 @@ document.getElementById("p-product-form").addEventListener("submit",async e=>{
   const imgBase64 = await getFileBase64(imgInput);
   if (imgBase64) {
     b.image = imgBase64;
-    b.locationLog = await getLocationLog();
+    b.locationLog = document.getElementById("pp-photo-city").value;
+    b.imageTimestamp = document.getElementById("pp-photo-date").value;
   }
   try{await api("/api/personal/products",{method:"POST",body:JSON.stringify(b)});e.target.reset();setStatus("Product added.","success");await loadPersonal()}catch(err){setStatus(err.message,"error")}
 });
@@ -328,6 +388,21 @@ function openEditModal(pid,ctx){
   document.getElementById("ep-category").value=p.category;document.getElementById("ep-supplier").value=p.supplier;
   document.getElementById("ep-price").value=p.price;document.getElementById("ep-quantity").value=p.quantity;
   document.getElementById("ep-location").value=p.location||"";document.getElementById("ep-barcode").value=p.barcode||"";
+  
+  if (p.imageMeta) {
+    if (p.imageMeta.timestamp) {
+      const d = new Date(p.imageMeta.timestamp);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      document.getElementById("ep-photo-date").value = d.toISOString().slice(0, 16);
+    } else {
+      document.getElementById("ep-photo-date").value = "";
+    }
+    document.getElementById("ep-photo-city").value = p.imageMeta.location || "";
+  } else {
+    document.getElementById("ep-photo-date").value = "";
+    document.getElementById("ep-photo-city").value = "";
+  }
+  
   document.getElementById("edit-product-modal").classList.add("modal--open");
 }
 function closeEditModal(){document.getElementById("edit-product-modal").classList.remove("modal--open")}
@@ -343,8 +418,9 @@ document.getElementById("edit-product-form").addEventListener("submit",async e=>
   const imgBase64 = await getFileBase64(imgInput);
   if (imgBase64) {
     b.image = imgBase64;
-    b.locationLog = await getLocationLog();
   }
+  b.locationLog = document.getElementById("ep-photo-city").value;
+  b.imageTimestamp = document.getElementById("ep-photo-date").value;
   try{
     const url=ctx==="group"?`/api/groups/${S.currentGroup}/products/${id}`:`/api/personal/products/${id}`;
     await api(url,{method:"PUT",body:JSON.stringify(b)});closeEditModal();setStatus("Updated.","success");

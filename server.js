@@ -58,7 +58,7 @@ function insightsRateLimiter(req, res, next) {
     return next();
   }
   if (record.count >= maxRequests) {
-    return res.status(429).json({ message: "Too many requests. Please wait." });
+    return res.status(429).json({ message: "Model limit reached. Please wait before asking the AI again." });
   }
   record.count++;
   next();
@@ -89,23 +89,152 @@ ${JSON.stringify(products)}
 INSTRUCTIONS:
 1. Format responses in clear Markdown with bullet points and tables.
 2. Never output raw JSON. Use natural language.
-3. If asked to modify data, say you're insights-only and suggest using the dashboard.
+3. If the user asks to modify data (add, edit, delete products), use the available tools to perform those actions. You have full access to manage inventory.
 4. For charts, use mermaid code blocks (pie or xychart-beta only).
 5. IMPORTANT: If the user asks to download images or get images for a specific location or date, filter the matching products and output EXACTLY the following tag in your response: <DOWNLOAD_IMAGES ids="id1,id2,id3" /> (replace id1,id2 with actual product _ids). Do not put this tag inside a code block. Provide a helpful message along with the tag.`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "add_product",
+          description: "Add a new product to the inventory",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              sku: { type: "string" },
+              category: { type: "string" },
+              supplier: { type: "string" },
+              price: { type: "number" },
+              quantity: { type: "number" },
+              location: { type: "string" }
+            },
+            required: ["name", "sku", "category", "supplier", "price", "quantity"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "delete_product",
+          description: "Delete a product from the inventory by its SKU",
+          parameters: {
+            type: "object",
+            properties: {
+              sku: { type: "string", description: "The SKU of the product to delete" }
+            },
+            required: ["sku"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "edit_product",
+          description: "Edit an existing product in the inventory by its SKU",
+          parameters: {
+            type: "object",
+            properties: {
+              sku: { type: "string", description: "The SKU of the product to edit" },
+              updates: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  category: { type: "string" },
+                  supplier: { type: "string" },
+                  price: { type: "number" },
+                  quantity: { type: "number" },
+                  location: { type: "string" }
+                }
+              }
+            },
+            required: ["sku", "updates"]
+          }
+        }
+      }
+    ];
+
+    let messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: query }
+    ];
+
+    let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
+        model: "llama-3.3-70b-versatile",
+        messages: messages,
         temperature: 0.7,
+        tools: tools,
+        tool_choice: "auto"
       }),
     });
 
     if (!response.ok) throw new Error("Failed to fetch from Groq API.");
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
+    let data = await response.json();
+    let responseMessage = data.choices[0].message;
+
+    // Handle tool calls
+    if (responseMessage.tool_calls) {
+      messages.push(responseMessage); // Add the assistant's tool calls to messages
+
+      for (const toolCall of responseMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+        let functionResult = "";
+
+        try {
+          if (functionName === "add_product") {
+            const newProduct = new Product({
+              ...functionArgs,
+              groupId: groupId || null,
+              ownerId: req.user.id,
+              createdBy: req.user.id
+            });
+            await newProduct.save();
+            functionResult = "Product added successfully.";
+          } else if (functionName === "delete_product") {
+            const result = await Product.deleteOne({ sku: functionArgs.sku.toUpperCase(), groupId: groupId || null });
+            functionResult = result.deletedCount > 0 ? "Product deleted successfully." : "Product not found.";
+          } else if (functionName === "edit_product") {
+            const result = await Product.findOneAndUpdate(
+              { sku: functionArgs.sku.toUpperCase(), groupId: groupId || null },
+              { $set: functionArgs.updates },
+              { new: true }
+            );
+            functionResult = result ? "Product updated successfully." : "Product not found.";
+          }
+        } catch (err) {
+          functionResult = "Error executing action: " + err.message;
+        }
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          name: functionName,
+          content: functionResult
+        });
+      }
+
+      // Second call to get the final response from AI
+      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: messages,
+          temperature: 0.7
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch from Groq API during tool resolution.");
+      data = await response.json();
+      responseMessage = data.choices[0].message;
+    }
+
+    res.json({ reply: responseMessage.content });
   } catch (err) {
     res.status(500).json({ message: err.message || "Could not load insights." });
   }

@@ -20,19 +20,27 @@ function showView(v){
   document.getElementById("view-group").style.display=v==="group"?"block":"none";
   document.getElementById("view-personal").style.display=v==="personal"?"block":"none";
   const tn=document.getElementById("tab-nav");
+  const mn=document.getElementById("mobile-nav");
   if(v==="group"){
-    tn.innerHTML=["overview","inventory","movements","members","requests","logs"].map(t=>`<button class="tab-nav-btn" data-tab="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join("");
+    const tabs = ["overview","inventory","movements","members","requests","logs"];
+    tn.innerHTML=tabs.map(t=>`<button class="tab-nav-btn" data-tab="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join("");
+    if (mn) { mn.innerHTML=tabs.map(t=>`<button class="tab-nav-btn" data-tab="${t}"><span class="nav-icon">°</span>${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join(""); mn.style.display="flex"; }
     switchGroupTab(S.groupTab||"overview");
-  } else tn.innerHTML="";
+  } else {
+    tn.innerHTML="";
+    if(mn) mn.style.display="none";
+  }
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function switchGroupTab(tab){
   S.groupTab=tab;
   document.querySelectorAll("#view-group .tab-content").forEach(el=>{el.classList.toggle("tab-content--active",el.id===`tab-${tab}`)});
-  document.querySelectorAll("#tab-nav .tab-nav-btn").forEach(b=>{b.classList.toggle("tab-bar__btn--active",b.dataset.tab===tab)});
+  document.querySelectorAll("#tab-nav .tab-nav-btn, #mobile-nav .tab-nav-btn").forEach(b=>{b.classList.toggle("tab-bar__btn--active",b.dataset.tab===tab)});
 }
 document.getElementById("tab-nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)switchGroupTab(b.dataset.tab)});
+const mnEvent = document.getElementById("mobile-nav");
+if (mnEvent) mnEvent.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)switchGroupTab(b.dataset.tab)});
 document.getElementById("nav-home-btn").addEventListener("click",()=>{showView("home");loadHome()});
 
 /* ─── HOME ────────────────────────────────────────────── */

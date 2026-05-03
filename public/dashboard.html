@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StockPilot | Dashboard</title>
-  <meta name="description" content="StockPilot dashboard — manage your groups, personal inventory, and team collaboration.">
+  <meta name="description"
+    content="StockPilot dashboard — manage your groups, personal inventory, and team collaboration.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
   <div class="app-bg"></div>
 
@@ -79,14 +82,14 @@
 
     <!-- ─── GROUP VIEW ─────────────────────────────── -->
     <div id="view-group" style="display:none">
-      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.5rem">
         <button class="btn btn--ghost btn--sm" id="back-home-btn">← Back</button>
         <h1 class="panel__title" id="group-title" style="font-size:1.5rem"></h1>
         <span class="pill" id="group-role-pill"></span>
         <div style="margin-left:auto;display:flex;gap:0.5rem">
           <button class="btn btn--ghost btn--sm" id="edit-group-btn" style="display:none">Edit</button>
           <button class="btn btn--danger btn--sm" id="leave-group-btn" style="display:none">Leave Workspace</button>
-          <button class="btn btn--danger btn--sm" id="delete-group-btn" style="display:none">Delete Workspace</button>
+          <button class="btn btn--danger btn--sm" id="delete-group-btn" style="display:none">Delete</button>
         </div>
       </div>
 
@@ -95,11 +98,34 @@
         <section class="stats-grid" id="group-stats"></section>
         <div class="layout-grid layout-grid--wide" style="margin-top:1.5rem">
           <div class="panel">
-            <div class="panel__header"><div><p class="panel__label">Analytics</p><h2 class="panel__title">Category Stock</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Analytics</p>
+                <h2 class="panel__title">Category Stock</h2>
+              </div>
+            </div>
             <div class="chart-surface"><svg id="category-chart" class="chart" viewBox="0 0 600 260"></svg></div>
+            <div style="margin-top:1.5rem" class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Items</th>
+                    <th>Units</th>
+                    <th>Total Value</th>
+                  </tr>
+                </thead>
+                <tbody id="category-breakdown-table"></tbody>
+              </table>
+            </div>
           </div>
           <div class="panel">
-            <div class="panel__header"><div><p class="panel__label">Movement Trends</p><h2 class="panel__title">Stock Flow</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Movement Trends</p>
+                <h2 class="panel__title">Stock Flow</h2>
+              </div>
+            </div>
             <div class="metric-stack" id="movement-summary"></div>
           </div>
         </div>
@@ -109,28 +135,61 @@
         <div class="layout-grid layout-grid--wide">
           <div class="panel">
             <div class="panel__header">
-              <div><p class="panel__label">Inventory</p><h2 class="panel__title">Items in Stock</h2></div>
-              <div class="search-box"><label for="search-input">Search</label><input type="search" id="search-input" placeholder="Search name, SKU…"></div>
+              <div>
+                <p class="panel__label">Inventory</p>
+                <h2 class="panel__title">Items in Stock</h2>
+              </div>
+              <div class="search-box"><label for="search-input">Search</label><input type="search" id="search-input"
+                  placeholder="Search name, SKU…"></div>
             </div>
             <div class="table-wrap">
-              <table><thead><tr><th>Image</th><th>Item</th><th>SKU</th><th>Supplier</th><th>Units</th><th>Value</th><th>Location</th><th>Action</th></tr></thead>
-              <tbody id="inventory-table"></tbody></table>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Item</th>
+                    <th>SKU</th>
+                    <th>Supplier</th>
+                    <th>Units</th>
+                    <th>Value</th>
+                    <th>Location</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table"></tbody>
+              </table>
             </div>
           </div>
           <div class="panel" id="add-product-panel" style="display:none">
-            <div class="panel__header"><div><p class="panel__label">Admin</p><h2 class="panel__title">Add Product</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Admin</p>
+                <h2 class="panel__title">Add Product</h2>
+              </div>
+            </div>
             <form id="product-form">
               <div class="form-grid">
                 <div class="form-group"><label for="p-name">Name</label><input type="text" id="p-name" required></div>
                 <div class="form-group"><label for="p-sku">SKU</label><input type="text" id="p-sku" required></div>
-                <div class="form-group"><label for="p-category">Category</label><input type="text" id="p-category" required></div>
-                <div class="form-group"><label for="p-supplier">Supplier</label><input type="text" id="p-supplier" required></div>
-                <div class="form-group"><label for="p-price">Price (₹)</label><input type="number" id="p-price" min="1" required></div>
-                <div class="form-group"><label for="p-quantity">Quantity</label><input type="number" id="p-quantity" min="0" required></div>
-                <div class="form-group"><label for="p-location">Location</label><input type="text" id="p-location"></div>
+                <div class="form-group"><label for="p-category">Category</label><input type="text" id="p-category"
+                    required></div>
+                <div class="form-group"><label for="p-supplier">Supplier</label><input type="text" id="p-supplier"
+                    required></div>
+                <div class="form-group"><label for="p-price">Price (₹)</label><input type="number" id="p-price" min="1"
+                    required></div>
+                <div class="form-group"><label for="p-quantity">Quantity</label><input type="number" id="p-quantity"
+                    min="0" required></div>
+                <div class="form-group"><label for="p-location">Location</label><input type="text" id="p-location">
+                </div>
                 <div class="form-group"><label for="p-barcode">Barcode</label><input type="text" id="p-barcode"></div>
-                <div class="form-group form-grid--full"><label for="p-image">Image</label><input type="file" id="p-image" accept="image/*"></div>
-                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save Product</button></div>
+                <div class="form-group form-grid--full"><label for="p-image">Image</label><input type="file"
+                    id="p-image" accept="image/*"></div>
+                <div class="form-group"><label for="p-photo-date">Photo Date & Time</label><input type="datetime-local"
+                    id="p-photo-date"></div>
+                <div class="form-group"><label for="p-photo-city">Photo Location (City)</label><input type="text"
+                    id="p-photo-city" placeholder="e.g. New York"></div>
+                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save
+                    Product</button></div>
               </div>
             </form>
           </div>
@@ -140,19 +199,36 @@
       <div class="tab-content" id="tab-movements">
         <div class="layout-grid layout-grid--2">
           <div class="panel" id="record-movement-panel" style="display:none">
-            <div class="panel__header"><div><p class="panel__label">Stock Flow</p><h2 class="panel__title">Record Movement</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Stock Flow</p>
+                <h2 class="panel__title">Record Movement</h2>
+              </div>
+            </div>
             <form id="movement-form">
               <div class="form-grid">
-                <div class="form-group form-grid--full"><label for="m-product">Select Item</label><select id="m-product" required></select></div>
-                <div class="form-group"><label for="m-type">Type</label><select id="m-type" required><option value="in">Stock In</option><option value="out">Stock Out</option></select></div>
-                <div class="form-group"><label for="m-quantity">Quantity</label><input type="number" id="m-quantity" min="1" required></div>
-                <div class="form-group form-grid--full"><label for="m-note">Note</label><input type="text" id="m-note" required></div>
-                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Record</button></div>
+                <div class="form-group form-grid--full"><label for="m-product">Select Item</label><select id="m-product"
+                    required></select></div>
+                <div class="form-group"><label for="m-type">Type</label><select id="m-type" required>
+                    <option value="in">Stock In</option>
+                    <option value="out">Stock Out</option>
+                  </select></div>
+                <div class="form-group"><label for="m-quantity">Quantity</label><input type="number" id="m-quantity"
+                    min="1" required></div>
+                <div class="form-group form-grid--full"><label for="m-note">Note</label><input type="text" id="m-note"
+                    required></div>
+                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Record</button>
+                </div>
               </div>
             </form>
           </div>
           <div class="panel">
-            <div class="panel__header"><div><p class="panel__label">History</p><h2 class="panel__title">Recent Movements</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">History</p>
+                <h2 class="panel__title">Recent Movements</h2>
+              </div>
+            </div>
             <div class="stack-list" id="movement-list"></div>
           </div>
         </div>
@@ -161,27 +237,50 @@
       <div class="tab-content" id="tab-members">
         <div class="layout-grid layout-grid--2">
           <div class="panel">
-            <div class="panel__header"><div><p class="panel__label">Team</p><h2 class="panel__title">Members</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Team</p>
+                <h2 class="panel__title">Members</h2>
+              </div>
+            </div>
             <div class="stack-list" id="member-list"></div>
           </div>
           <div class="panel" id="invite-panel" style="display:none">
-            <div class="panel__header"><div><p class="panel__label">Invite</p><h2 class="panel__title">Send Invitation</h2></div></div>
+            <div class="panel__header">
+              <div>
+                <p class="panel__label">Invite</p>
+                <h2 class="panel__title">Send Invitation</h2>
+              </div>
+            </div>
             <form id="invite-form">
               <div class="form-grid">
-                <div class="form-group form-grid--full"><label for="inv-email">User Email</label><input type="email" id="inv-email" required placeholder="user@example.com"></div>
-                <div class="form-group form-grid--full"><label for="inv-message">Message (optional)</label><input type="text" id="inv-message" placeholder="Join our inventory team!"></div>
-                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Send Invite</button></div>
+                <div class="form-group form-grid--full"><label for="inv-email">User Email</label><input type="email"
+                    id="inv-email" required placeholder="user@example.com"></div>
+                <div class="form-group form-grid--full"><label for="inv-message">Message (optional)</label><input
+                    type="text" id="inv-message" placeholder="Join our inventory team!"></div>
+                <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Send
+                    Invite</button></div>
               </div>
             </form>
-            <div style="margin-top:1rem"><h3 style="font-size:0.85rem;opacity:0.6;margin-bottom:0.5rem">Sent Invites</h3><div class="stack-list" id="sent-invites-list"></div></div>
+            <div style="margin-top:1rem">
+              <h3 style="font-size:0.85rem;opacity:0.6;margin-bottom:0.5rem">Sent Invites</h3>
+              <div class="stack-list" id="sent-invites-list"></div>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="tab-content" id="tab-requests">
-        <div class="section-title"><h2>Pending Requests</h2></div>
+        <div class="section-title">
+          <h2>Pending Requests</h2>
+        </div>
         <div class="stack-list" id="request-list"></div>
-        <div style="margin-top:2rem"><div class="section-title"><h2>Request History</h2></div><div class="stack-list" id="request-history"></div></div>
+        <div style="margin-top:2rem">
+          <div class="section-title">
+            <h2>Request History</h2>
+          </div>
+          <div class="stack-list" id="request-history"></div>
+        </div>
       </div>
 
 
@@ -200,27 +299,59 @@
       <div class="layout-grid layout-grid--wide" style="margin-top:1.5rem">
         <div class="panel">
           <div class="panel__header">
-            <div><p class="panel__label">My Items</p><h2 class="panel__title">Products</h2></div>
-            <div class="search-box"><label for="p-search">Search</label><input type="search" id="p-search" placeholder="Search…"></div>
+            <div>
+              <p class="panel__label">My Items</p>
+              <h2 class="panel__title">Products</h2>
+            </div>
+            <div class="search-box"><label for="p-search">Search</label><input type="search" id="p-search"
+                placeholder="Search…"></div>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>Image</th><th>Item</th><th>SKU</th><th>Supplier</th><th>Units</th><th>Value</th><th>Location</th><th>Action</th></tr></thead>
-            <tbody id="p-inventory-table"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Item</th>
+                  <th>SKU</th>
+                  <th>Supplier</th>
+                  <th>Units</th>
+                  <th>Value</th>
+                  <th>Location</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="p-inventory-table"></tbody>
+            </table>
           </div>
         </div>
         <div class="panel">
-          <div class="panel__header"><div><p class="panel__label">Add</p><h2 class="panel__title">Add Product</h2></div></div>
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Add</p>
+              <h2 class="panel__title">Add Product</h2>
+            </div>
+          </div>
           <form id="p-product-form">
             <div class="form-grid">
               <div class="form-group"><label for="pp-name">Name</label><input type="text" id="pp-name" required></div>
               <div class="form-group"><label for="pp-sku">SKU</label><input type="text" id="pp-sku" required></div>
-              <div class="form-group"><label for="pp-category">Category</label><input type="text" id="pp-category" required></div>
-              <div class="form-group"><label for="pp-supplier">Supplier</label><input type="text" id="pp-supplier" required></div>
-              <div class="form-group"><label for="pp-price">Price (₹)</label><input type="number" id="pp-price" min="1" required></div>
-              <div class="form-group"><label for="pp-quantity">Qty</label><input type="number" id="pp-quantity" min="0" required></div>
-              <div class="form-group"><label for="pp-location">Location</label><input type="text" id="pp-location"></div>
+              <div class="form-group"><label for="pp-category">Category</label><input type="text" id="pp-category"
+                  required></div>
+              <div class="form-group"><label for="pp-supplier">Supplier</label><input type="text" id="pp-supplier"
+                  required></div>
+              <div class="form-group"><label for="pp-price">Price (₹)</label><input type="number" id="pp-price" min="1"
+                  required></div>
+              <div class="form-group"><label for="pp-quantity">Qty</label><input type="number" id="pp-quantity" min="0"
+                  required></div>
+              <div class="form-group"><label for="pp-location">Location</label><input type="text" id="pp-location">
+              </div>
               <div class="form-group"><label for="pp-barcode">Barcode</label><input type="text" id="pp-barcode"></div>
-              <div class="form-group form-grid--full"><label for="pp-image">Image</label><input type="file" id="pp-image" accept="image/*"></div>
+              <div class="form-group form-grid--full"><label for="pp-image">Image</label><input type="file"
+                  id="pp-image" accept="image/*"></div>
+              <div class="form-group"><label for="pp-photo-date">Photo Date & Time</label><input type="datetime-local"
+                  id="pp-photo-date"></div>
+              <div class="form-group"><label for="pp-photo-city">Photo Location (City)</label><input type="text"
+                  id="pp-photo-city" placeholder="e.g. New York"></div>
               <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save</button></div>
             </div>
           </form>
@@ -229,31 +360,53 @@
 
       <div class="layout-grid layout-grid--2" style="margin-top:1.5rem">
         <div class="panel">
-          <div class="panel__header"><div><p class="panel__label">Stock Flow</p><h2 class="panel__title">Record Movement</h2></div></div>
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">Stock Flow</p>
+              <h2 class="panel__title">Record Movement</h2>
+            </div>
+          </div>
           <form id="p-movement-form">
             <div class="form-grid">
-              <div class="form-group form-grid--full"><label for="pm-product">Item</label><select id="pm-product" required></select></div>
-              <div class="form-group"><label for="pm-type">Type</label><select id="pm-type"><option value="in">In</option><option value="out">Out</option></select></div>
-              <div class="form-group"><label for="pm-quantity">Qty</label><input type="number" id="pm-quantity" min="1" required></div>
-              <div class="form-group form-grid--full"><label for="pm-note">Note</label><input type="text" id="pm-note" required></div>
-              <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Record</button></div>
+              <div class="form-group form-grid--full"><label for="pm-product">Item</label><select id="pm-product"
+                  required></select></div>
+              <div class="form-group"><label for="pm-type">Type</label><select id="pm-type">
+                  <option value="in">In</option>
+                  <option value="out">Out</option>
+                </select></div>
+              <div class="form-group"><label for="pm-quantity">Qty</label><input type="number" id="pm-quantity" min="1"
+                  required></div>
+              <div class="form-group form-grid--full"><label for="pm-note">Note</label><input type="text" id="pm-note"
+                  required></div>
+              <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Record</button>
+              </div>
             </div>
           </form>
         </div>
         <div class="panel">
-          <div class="panel__header"><div><p class="panel__label">History</p><h2 class="panel__title">Movements</h2></div></div>
+          <div class="panel__header">
+            <div>
+              <p class="panel__label">History</p>
+              <h2 class="panel__title">Movements</h2>
+            </div>
+          </div>
           <div class="stack-list" id="p-movement-list"></div>
         </div>
       </div>
     </div>
   </div>
 
+  <nav class="mobile-bottom-nav" id="mobile-nav" style="display:none"></nav>
+
   <!-- Edit Product Modal -->
   <div class="modal" id="edit-product-modal">
     <div class="modal__overlay" id="edit-modal-overlay"></div>
     <div class="modal__content panel">
       <div class="panel__header">
-        <div><p class="panel__label">Edit</p><h2 class="panel__title">Update Product</h2></div>
+        <div>
+          <p class="panel__label">Edit</p>
+          <h2 class="panel__title">Update Product</h2>
+        </div>
         <button class="btn btn--ghost btn--sm" type="button" id="edit-modal-close">✕</button>
       </div>
       <form id="edit-product-form">
@@ -262,13 +415,22 @@
         <div class="form-grid">
           <div class="form-group"><label for="ep-name">Name</label><input type="text" id="ep-name" required></div>
           <div class="form-group"><label for="ep-sku">SKU</label><input type="text" id="ep-sku" required></div>
-          <div class="form-group"><label for="ep-category">Category</label><input type="text" id="ep-category" required></div>
-          <div class="form-group"><label for="ep-supplier">Supplier</label><input type="text" id="ep-supplier" required></div>
-          <div class="form-group"><label for="ep-price">Price</label><input type="number" id="ep-price" min="1" required></div>
-          <div class="form-group"><label for="ep-quantity">Qty</label><input type="number" id="ep-quantity" min="0" required></div>
+          <div class="form-group"><label for="ep-category">Category</label><input type="text" id="ep-category" required>
+          </div>
+          <div class="form-group"><label for="ep-supplier">Supplier</label><input type="text" id="ep-supplier" required>
+          </div>
+          <div class="form-group"><label for="ep-price">Price</label><input type="number" id="ep-price" min="1"
+              required></div>
+          <div class="form-group"><label for="ep-quantity">Qty</label><input type="number" id="ep-quantity" min="0"
+              required></div>
           <div class="form-group"><label for="ep-location">Location</label><input type="text" id="ep-location"></div>
           <div class="form-group"><label for="ep-barcode">Barcode</label><input type="text" id="ep-barcode"></div>
-          <div class="form-group form-grid--full"><label for="ep-image">Image</label><input type="file" id="ep-image" accept="image/*"></div>
+          <div class="form-group form-grid--full"><label for="ep-image">Image</label><input type="file" id="ep-image"
+              accept="image/*"></div>
+          <div class="form-group"><label for="ep-photo-date">Photo Date & Time</label><input type="datetime-local"
+              id="ep-photo-date"></div>
+          <div class="form-group"><label for="ep-photo-city">Photo Location (City)</label><input type="text"
+              id="ep-photo-city" placeholder="e.g. New York"></div>
           <div class="form-grid--full" style="display:flex;gap:0.5rem;justify-content:flex-end">
             <button class="btn btn--ghost" type="button" id="edit-modal-cancel">Cancel</button>
             <button class="btn btn--primary" type="submit">Save Changes</button>
@@ -283,14 +445,20 @@
     <div class="modal__overlay" id="cg-overlay"></div>
     <div class="modal__content panel">
       <div class="panel__header">
-        <div><p class="panel__label">New</p><h2 class="panel__title">Create Workspace</h2></div>
+        <div>
+          <p class="panel__label">New</p>
+          <h2 class="panel__title">Create Workspace</h2>
+        </div>
         <button class="btn btn--ghost btn--sm" type="button" id="cg-close">✕</button>
       </div>
       <form id="create-group-form">
         <div class="form-grid">
-          <div class="form-group form-grid--full"><label for="cg-name">Workspace Name</label><input type="text" id="cg-name" required placeholder="My Warehouse"></div>
-          <div class="form-group form-grid--full"><label for="cg-desc">Description</label><input type="text" id="cg-desc" placeholder="Optional description"></div>
-          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Create Workspace</button></div>
+          <div class="form-group form-grid--full"><label for="cg-name">Workspace Name</label><input type="text"
+              id="cg-name" required placeholder="My Warehouse"></div>
+          <div class="form-group form-grid--full"><label for="cg-desc">Description</label><input type="text"
+              id="cg-desc" placeholder="Optional description"></div>
+          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Create
+              Workspace</button></div>
         </div>
       </form>
     </div>
@@ -301,16 +469,43 @@
     <div class="modal__overlay" id="eg-overlay"></div>
     <div class="modal__content panel">
       <div class="panel__header">
-        <div><p class="panel__label">Edit</p><h2 class="panel__title">Workspace Details</h2></div>
+        <div>
+          <p class="panel__label">Edit</p>
+          <h2 class="panel__title">Workspace Details</h2>
+        </div>
         <button class="btn btn--ghost btn--sm" type="button" id="eg-close">✕</button>
       </div>
       <form id="edit-group-form">
         <div class="form-grid">
-          <div class="form-group form-grid--full"><label for="eg-name">Workspace Name</label><input type="text" id="eg-name" required></div>
-          <div class="form-group form-grid--full"><label for="eg-desc">Description</label><input type="text" id="eg-desc"></div>
-          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save Changes</button></div>
+          <div class="form-group form-grid--full"><label for="eg-name">Workspace Name</label><input type="text"
+              id="eg-name" required></div>
+          <div class="form-group form-grid--full"><label for="eg-desc">Description</label><input type="text"
+              id="eg-desc"></div>
+          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save Changes</button>
+          </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Delete Workspace Modal -->
+  <div class="modal" id="delete-group-modal">
+    <div class="modal__overlay" id="dg-overlay"></div>
+    <div class="modal__content panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__label">Danger</p>
+          <h2 class="panel__title">Delete Workspace</h2>
+        </div>
+        <button class="btn btn--ghost btn--sm" type="button" id="dg-close">✕</button>
+      </div>
+      <div style="margin-bottom: 1.5rem;">
+        <p>Are you sure you want to delete this workspace? This action <strong>cannot be undone</strong>.</p>
+      </div>
+      <div class="form-grid--full" style="display:flex;gap:0.5rem;justify-content:flex-end">
+        <button class="btn btn--ghost" type="button" id="dg-cancel">Cancel</button>
+        <button class="btn btn--danger" type="button" id="dg-confirm">Delete Workspace</button>
+      </div>
     </div>
   </div>
 
@@ -319,14 +514,20 @@
     <div class="modal__overlay" id="ep-overlay"></div>
     <div class="modal__content panel">
       <div class="panel__header">
-        <div><p class="panel__label">Profile</p><h2 class="panel__title">Edit Profile</h2></div>
+        <div>
+          <p class="panel__label">Profile</p>
+          <h2 class="panel__title">Edit Profile</h2>
+        </div>
         <button class="btn btn--ghost btn--sm" type="button" id="ep-close">✕</button>
       </div>
       <form id="edit-profile-form">
         <div class="form-grid">
-          <div class="form-group form-grid--full"><label for="epf-name">Name</label><input type="text" id="epf-name" required></div>
-          <div class="form-group form-grid--full"><label for="epf-bio">Bio</label><input type="text" id="epf-bio" placeholder="Tell us about yourself"></div>
-          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save Profile</button></div>
+          <div class="form-group form-grid--full"><label for="epf-name">Name</label><input type="text" id="epf-name"
+              required></div>
+          <div class="form-group form-grid--full"><label for="epf-bio">Bio</label><input type="text" id="epf-bio"
+              placeholder="Tell us about yourself"></div>
+          <div class="form-grid--full"><button class="btn btn--primary btn--block" type="submit">Save Profile</button>
+          </div>
         </div>
       </form>
     </div>
@@ -339,7 +540,9 @@
       <button class="btn btn--ghost btn--sm" type="button" id="assistant-close">✕</button>
     </div>
     <div class="assistant-widget__body chat-box" id="global-chat-box">
-      <div class="chat-msg chat-msg--bot"><div class="chat-msg__bubble">Hello! Ask me anything about your current workspace.</div></div>
+      <div class="chat-msg chat-msg--bot">
+        <div class="chat-msg__bubble">Hello! Ask me anything about your current workspace.</div>
+      </div>
     </div>
     <form class="assistant-widget__form" id="global-chat-form">
       <input type="text" id="global-chat-input" placeholder="Ask AI..." required>
@@ -367,4 +570,5 @@
   <script src="/js/dashboard-core.js"></script>
   <script src="/js/dashboard-views.js"></script>
 </body>
+
 </html>
